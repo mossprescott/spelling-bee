@@ -118,9 +118,9 @@ of found words locally.
 For example, when the total possible is 180:
 
 - Beginner: 0 = 0%
-- Good Start: 4 = 2.5% (rounded down to the nearest even integer)
+- Good Start: 4 = 2% (rounded down to the nearest even integer)
 - Moving Up: 9 = 5%
-- Good: 14 = 7.5% (rounded up to the nearest even integer)
+- Good: 14 = 8% (rounded up to the nearest even integer)
 - Solid: 27 = 15%
 - Nice: 45 = 25%
 - Great: 72 = 40%
