@@ -15,6 +15,10 @@ In addition, you get these features:
 - see the group score considering your words *and* your friends' words
 - *no hints*, even if you open Web Inspector
 
+For a demo, see https://spelling-bee-with-enemies.herokuapp.com, but please note that not all
+of the features work. If you're interested in hosting a server for yourself and your friends,
+get in touch and I can help you get started.
+
 
 ## Backend
 
