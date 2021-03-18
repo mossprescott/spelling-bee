@@ -33,10 +33,6 @@ score for each user (including the client itself.) For each word already found, 
 the name of each user who has already found that word (including the current user.) When the puzzle
 is still active, only words already found by the current user are included.
 
-`letters` always consists of exactly seven different letters, with the first letter being
-capitalized to indicate that it must appear in every word. Other than that, all words are in lower
-case.
-
 Example response body:
 
 ```json
