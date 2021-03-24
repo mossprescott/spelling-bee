@@ -88,7 +88,14 @@ update msg model =
                     , Cmd.none
                     )
 
-                -- TODO: at least handle load errors
+                ReceivePuzzle (Result.Err err) ->
+                    ( Debug.log (Debug.toString err)
+                        { model
+                            | message = Just <| "Error: " ++ Debug.toString err -- TEMP: this is gonna be ugly
+                        }
+                    , Cmd.none
+                    )
+
                 _ ->
                     -- Before the initial load, no other msg is meaningful
                     ( model, Cmd.none )
@@ -331,7 +338,7 @@ view model =
                     threePanel hdr lp rp
 
                 Nothing ->
-                    threePanel loadingHeader Element.none Element.none
+                    threePanel (loadingHeader model.message) Element.none Element.none
     in
     Element.layout
         [ bodyFont

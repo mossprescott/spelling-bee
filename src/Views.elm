@@ -88,8 +88,8 @@ puzzleHeader date editor previousMsg nextMsg =
         ]
 
 
-loadingHeader : Element msg
-loadingHeader =
+loadingHeader : Maybe String -> Element msg
+loadingHeader msg =
     column
         [ headerFont
         , spacing 5
@@ -104,7 +104,7 @@ loadingHeader =
             , Font.size 16
             , Font.italic
             ]
-            (text "loading…")
+            (text <| Maybe.withDefault "loading…" msg)
         ]
 
 
