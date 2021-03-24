@@ -268,7 +268,7 @@ view model =
                                 , Element.spacing 10
                                 ]
                                 [ scoreBanner data.hints.maxScore (totalScore data.user data.found)
-                                , whenLatest <| entered Edit Submit model.input
+                                , whenLatest <| entered Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     hint <|
                                         case model.message of

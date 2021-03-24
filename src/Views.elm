@@ -127,11 +127,11 @@ scoreBanner maxScore score =
 
 {-| Text area where letters appear (and can optionally be entered/editted directly.)
 -}
-entered : (String -> msg) -> msg -> List Char -> Element msg
-entered changedMsg enterMsg word =
+entered : (String -> msg) -> msg -> msg -> List Char -> Element msg
+entered changedMsg enterMsg shuffleMsg word =
     row
         [ centerX
-        , onEnter enterMsg
+        , onKeyStroke <| Dict.fromList [ ( "Enter", enterMsg ), ( " ", shuffleMsg ) ]
         ]
         [ Input.text
             [ Font.center
@@ -139,23 +139,24 @@ entered changedMsg enterMsg word =
             { text = String.fromList word
             , placeholder = Nothing
             , label = Input.labelHidden "Word"
-            , onChange = changedMsg
+            , onChange = changedMsg << String.filter ((/=) ' ')
             }
         ]
 
 
-onEnter : msg -> Attribute msg
-onEnter msg =
+onKeyStroke : Dict String msg -> Attribute msg
+onKeyStroke msgs =
     htmlAttribute
         (Html.Events.on "keyup"
             (Decode.field "key" Decode.string
                 |> Decode.andThen
                     (\key ->
-                        if key == "Enter" then
-                            Decode.succeed msg
+                        case Dict.get key msgs of
+                            Just msg ->
+                                Decode.succeed msg
 
-                        else
-                            Decode.fail "Not the enter key"
+                            Nothing ->
+                                Decode.fail "Not a known key"
                     )
             )
         )
