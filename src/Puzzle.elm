@@ -177,7 +177,7 @@ decodePuzzle =
         |> required "displayWeekday" string
         |> required "displayDate" string
         |> required "printDate" string
-        |> required "editor" string
+        |> optional "editor" string "Anonymous"
         |> required "centerLetter" char
         |> required "outerLetters" (list char)
 
