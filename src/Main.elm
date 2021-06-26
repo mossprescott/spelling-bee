@@ -298,7 +298,7 @@ view model =
                                 , Element.spacing 15
                                 ]
                                 [ wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
-                                , friendList user friends colors data.hints.maxScore groupScore
+                                , friendList user friendsPlaying colors data.hints.maxScore groupScore
                                 ]
 
                         foundMunged =
@@ -314,6 +314,10 @@ view model =
                             assignColors <|
                                 List.filter ((/=) user) <|
                                     Dict.keys friends
+
+                        friendsPlaying =
+                            Dict.filter (\_ info -> info.score > 0) <|
+                                friends
 
                         ( user, friends, groupScore ) =
                             case data.user of
