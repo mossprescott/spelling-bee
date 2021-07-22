@@ -316,7 +316,7 @@ view model =
                                     Dict.keys friends
 
                         friendsPlaying =
-                            Dict.filter (\_ info -> info.score > 0) <|
+                            Dict.filter (\name info -> name == user || info.score > 0) <|
                                 friends
 
                         ( user, friends, groupScore ) =
