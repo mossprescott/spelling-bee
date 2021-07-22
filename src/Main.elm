@@ -313,7 +313,7 @@ view model =
                         colors =
                             assignColors <|
                                 List.filter ((/=) user) <|
-                                    Dict.keys friends
+                                    Dict.keys friendsPlaying
 
                         friendsPlaying =
                             Dict.filter (\name info -> name == user || info.score > 0) <|
