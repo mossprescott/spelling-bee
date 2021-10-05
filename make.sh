@@ -1,4 +1,5 @@
 #! /bin/bash
+set -ex
 
 elm make src/Main.elm --output=spellingbee.js
 
