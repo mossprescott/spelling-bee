@@ -8,7 +8,7 @@ import Element.Font as Font
 import Html exposing (Html)
 import Http
 import List
-import Puzzle exposing (Puzzle, PuzzleId, PuzzleResponse, User, UserInfo, getPuzzle, postWord, totalScore, wordScore)
+import Puzzle exposing (Puzzle, PuzzleId, PuzzleResponse, UserInfo, apparentScore, getPuzzle, postWord, unsharedScore, wordScore)
 import Random
 import Random.List exposing (shuffle)
 import Views
@@ -22,13 +22,18 @@ import Views
         , hint
         , hive
         , loadingHeader
+        , puzzleFooter
         , puzzleHeader
         , scoreBanner
         , threePanel
         , wordList
         )
 import Views.Constants exposing (..)
-import Views.Thermo exposing (scoreThermo)
+
+
+
+-- TODO: track the displayed date in the location, and initialize it from the URL on load,
+-- so you can "deep link" to a particular day.
 
 
 main =
@@ -257,9 +262,11 @@ view model =
                         hdr =
                             puzzleHeader
                                 data.puzzle.displayDate
-                                data.puzzle.editor
                                 (Maybe.map ShowPuzzle data.previousPuzzleId)
                                 (Maybe.map ShowPuzzle data.nextPuzzleId)
+
+                        ftr =
+                            puzzleFooter data.puzzle.editor
 
                         lp =
                             Element.column
@@ -267,7 +274,10 @@ view model =
                                 , Element.alignTop
                                 , Element.spacing 10
                                 ]
-                                [ scoreBanner data.hints.maxScore (totalScore data.user data.found)
+                                [ -- Note: this is the player's score based a local count of the words they found,
+                                  -- not the score under .friends (which should be the same), probably because of
+                                  -- guest mode?
+                                  scoreBanner data.hints.maxScore (apparentScore data.user data)
                                 , whenLatest <| entered Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     hint <|
@@ -298,7 +308,7 @@ view model =
                                 , Element.spacing 15
                                 ]
                                 [ wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
-                                , friendList user friendsPlaying colors data.hints.maxScore groupScore
+                                , friendList user friendsPlaying friendToMeta data.hints.maxScore groupScore
                                 ]
 
                         foundMunged =
@@ -306,14 +316,24 @@ view model =
                                 (\_ foundBy ->
                                     WordEntry
                                         (not <| List.isEmpty <| List.filter ((==) user) foundBy)
-                                        (List.filterMap (\u -> Dict.get u colors) <| List.sort foundBy)
+                                        (List.filterMap
+                                            (\u -> Dict.get u colors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
+                                         <|
+                                            List.sort foundBy
+                                        )
                                 )
                                 data.found
 
+                        -- Assign colors to just the friends that have logged words today. That
+                        -- results in nicer choices of colors sometimes, and potentially
+                        -- inconsistent choices from day to day if different people are playing.
                         colors =
                             assignColors <|
                                 List.filter ((/=) user) <|
                                     Dict.keys friendsPlaying
+
+                        friendToMeta =
+                            Dict.map (\u c -> ( c, unsharedScore u data )) colors
 
                         friendsPlaying =
                             Dict.filter (\name info -> name == user || info.score > 0) <|
@@ -339,10 +359,10 @@ view model =
                                 Just name ->
                                     ( name, data.friends, data.group.score )
                     in
-                    threePanel hdr lp rp
+                    threePanel hdr lp rp ftr
 
                 Nothing ->
-                    threePanel (loadingHeader model.message) Element.none Element.none
+                    threePanel (loadingHeader model.message) Element.none Element.none Element.none
     in
     Element.layout
         [ bodyFont

@@ -8,6 +8,7 @@ module Views exposing
     , hint
     , hive
     , loadingHeader
+    , puzzleFooter
     , puzzleHeader
     , scoreBanner
     , threePanel
@@ -23,7 +24,6 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
-import Html
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
@@ -35,8 +35,8 @@ import Views.Thermo exposing (..)
 {-| Layout the page with three main elements: a header that spans the top of the page,
 and two panels which will either sit side-by-side or flow vertically.
 -}
-threePanel : Element msg -> Element msg -> Element msg -> Element msg
-threePanel header content1 content2 =
+threePanel : Element msg -> Element msg -> Element msg -> Element msg -> Element msg
+threePanel header content1 content2 footer =
     column
         [ spacing 15
         , padding 5
@@ -48,42 +48,21 @@ threePanel header content1 content2 =
             [ content1
             , content2
             ]
+        , footer
         ]
 
 
-puzzleHeader : String -> String -> Maybe msg -> Maybe msg -> Element msg
-puzzleHeader date editor previousMsg nextMsg =
+puzzleHeader : String -> Maybe msg -> Maybe msg -> Element msg
+puzzleHeader date previousMsg nextMsg =
     column
-        [ headerFont
-        , spacing 5
+        [--centerX
         ]
-        [ el
-            [ Font.bold
-            , Font.size 24
-            ]
-            (text "Spelling Bee")
-        , row
+        [ row
             [ spacing 10
             ]
             [ lightweightButton "←" "Previous Puzzle" previousMsg
             , el [] (text date)
             , lightweightButton "→" "Next Puzzle" nextMsg
-            ]
-        , el
-            [ Font.light
-            , Font.size 16
-            ]
-            (text <| "Edited by " ++ editor)
-        , row
-            [ Font.light
-            , Font.size 16
-            ]
-            [ text "for the "
-            , link
-                []
-                { url = "https://www.nytimes.com/puzzles/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color blueBgColor ] ] (text "New York Times")
-                }
             ]
         ]
 
@@ -92,6 +71,7 @@ loadingHeader : Maybe String -> Element msg
 loadingHeader msg =
     column
         [ headerFont
+        , centerX
         , spacing 5
         ]
         [ el
@@ -105,6 +85,44 @@ loadingHeader msg =
             , Font.italic
             ]
             (text <| Maybe.withDefault "loading…" msg)
+        ]
+
+
+puzzleFooter : String -> Element msg
+puzzleFooter editor =
+    column
+        [ --centerX
+          spacing 5
+        ]
+        [ el [] (text " ") -- space
+        , el
+            [ Font.light
+            , Font.size 16
+            ]
+            (text <| "Puzzle by " ++ editor)
+        , row
+            [ Font.light
+            , Font.size 16
+            ]
+            [ text "for the "
+            , link
+                []
+                { url = "https://www.nytimes.com/puzzles/spelling-bee"
+                , label = el [ Font.italic, mouseOver [ Font.color blueBgColor ] ] (text "New York Times")
+                }
+            ]
+        , el [] (text " ") -- space
+        , row
+            [ Font.light
+            , Font.size 16
+            ]
+            [ text "Source and docs "
+            , link
+                []
+                { url = "https://github.com/mossprescott/spelling-bee"
+                , label = el [ Font.italic, mouseOver [ Font.color blueBgColor ] ] (text "here")
+                }
+            ]
         ]
 
 
@@ -294,11 +312,11 @@ distinguishing color and initial, or the group as a whole.
 -}
 type FriendEntry
     = Player User
-    | Friend User String Color -- note: not actually using the initial at this point
+    | Friend User Color Int -- note: not actually using the initial at this point
     | Group
 
 
-friendList : User -> Dict User UserInfo -> Dict User ( String, Color ) -> Int -> Int -> Element msg
+friendList : User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Element msg
 friendList user friends decorations maxScore groupScore =
     let
         sortedFriends =
@@ -312,13 +330,13 @@ friendList user friends decorations maxScore groupScore =
 
             else
                 case Dict.get u decorations of
-                    Just ( initial, color ) ->
-                        Friend u initial color
+                    Just ( color, extraScore ) ->
+                        Friend u color extraScore
 
+                    -- Note: doesn't happen if inputs are correct.
                     Nothing ->
-                        Friend u "" grayBgColor
+                        Friend u grayBgColor 0
 
-        -- Note: doesn't happen if inputs are correct.
         -- Note: leaving out the Group entry if there are no friends (i.e. Guest mode), but
         -- include it otherwise, even if no other user has any points, because it conveys the max score.
         entries : List ( FriendEntry, Int )
@@ -377,7 +395,7 @@ friendList user friends decorations maxScore groupScore =
                             Player _ ->
                                 scoreThermo (smallThermoStyle blueBgColor) maxScore score
 
-                            Friend _ _ color ->
+                            Friend _ color _ ->
                                 if score > 0 then
                                     scoreThermo (smallThermoStyle color) maxScore score
 
@@ -390,14 +408,24 @@ friendList user friends decorations maxScore groupScore =
             , { header = none
               , width = shrink
               , view =
+                    \( _, score ) ->
+                        centerTextCell <|
+                            el [ Font.size friendScoreSize ] (text <| String.fromInt score)
+              }
+            , { header = none
+              , width = shrink
+              , view =
                     \( entry, _ ) ->
                         centerTextCell <|
                             case entry of
                                 Group ->
-                                    el [ Font.size (smallThermoStyle blueBgColor).labelSize ] (text <| "(" ++ String.fromInt maxScore ++ ")")
+                                    el [ Font.size friendScoreSize ] (text <| "(of " ++ String.fromInt maxScore ++ ")")
 
-                                _ ->
+                                Player _ ->
                                     none
+
+                                Friend _ _ extraScore ->
+                                    el [ Font.size friendScoreSize ] (text <| "(" ++ String.fromInt extraScore ++ "+)")
               }
             , spacerColumn
             ]
@@ -407,7 +435,7 @@ friendList user friends decorations maxScore groupScore =
 {-| Select colors and initials for each user, spreading out the colors so that users with the same
 initial won't get the same color (unless there are a _lot_ of collisions, e.g. more than five Ms.)
 -}
-assignColors : List User -> Dict User ( String, Color )
+assignColors : List User -> Dict User Color
 assignColors users =
     let
         zipRolling xs ys =
@@ -421,15 +449,13 @@ assignColors users =
                             ( zh, th ) :: loop zt tt
 
                         ( zzs, [] ) ->
+                            -- start over from the top
                             loop zzs ys
-
-                -- start over from the top
             in
             loop xs ys
     in
     Dict.fromList <|
-        List.map (\( u, c ) -> ( u, ( String.slice 0 1 u, c ) )) <|
-            zipRolling (List.sort users) friendColors
+        zipRolling (List.sort users) friendColors
 
 
 {-| TODO: `Found` to show the most-recently found word at the top. This will require parsing the words
@@ -624,6 +650,7 @@ mainThermoStyle =
     , bigRadius = 10
     , smallRadius = 4
     , connectorWidth = 5
+    , showScore = True
     , showNext = True
     }
 
@@ -632,11 +659,19 @@ smallThermoStyle : Color -> ThermoStyle
 smallThermoStyle filledColor =
     { mainThermoStyle
         | filled = filledColor
-        , bigRadius = 9
-        , smallRadius = 3
-        , connectorWidth = 3
+        , bigRadius = 6
+        , smallRadius = 2
+        , connectorWidth = 2
+        , showScore = False
         , showNext = False
     }
+
+
+{-| Bigger than th thermo label size, amsller than the names.
+-}
+friendScoreSize : Int
+friendScoreSize =
+    12
 
 
 noTouchDelay : Attribute msg

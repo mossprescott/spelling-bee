@@ -43,8 +43,8 @@ view =
                     ]
                 )
                 (Dict.fromList
-                    [ ( "Dave", ( "D", redColor ) )
-                    , ( "Jeff", ( "J", purpleColor ) )
+                    [ ( "Dave", ( redColor, 0 ) )
+                    , ( "Jeff", ( purpleColor, 3 ) )
                     ]
                 )
                 100

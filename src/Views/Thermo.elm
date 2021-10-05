@@ -15,6 +15,7 @@ type alias ThermoStyle =
     , bigRadius : Int
     , smallRadius : Int
     , connectorWidth : Int
+    , showScore : Bool
     , showNext : Bool
     }
 
@@ -45,6 +46,7 @@ scoreThermo style maxScore score =
 {-| Score level thresholds, painstakingly reverse-engineered. Note: Queen Bee doesn't appear in
 thermos (until you actually achieve it), to encourage a sense of accomplishment at Genius level.
 -}
+thresholds : Array ( String, Float )
 thresholds =
     Array.fromList
         [ ( "Beginner", 0.0 )
@@ -80,8 +82,15 @@ scoreRating maxScore score =
 scoreBubbles : ThermoStyle -> Int -> Int -> List Bubble
 scoreBubbles style maxScore score =
     let
+        scoreLabel =
+            if style.showScore then
+                Just <| String.fromInt score
+
+            else
+                Nothing
+
         bigBlue =
-            Bubble style.filled (Just <| String.fromInt score) Circle style.bigRadius
+            Bubble style.filled scoreLabel Circle style.bigRadius
 
         bigGray t =
             if style.showNext then
@@ -104,7 +113,7 @@ scoreBubbles style maxScore score =
                 [] ->
                     []
 
-                t :: [] ->
+                _ :: [] ->
                     [ (if score == maxScore then
                         maxed
 
@@ -143,10 +152,10 @@ scoreBubbles style maxScore score =
                 [] ->
                     []
 
-                t :: [] ->
+                _ :: [] ->
                     [ squared smallGray ]
 
-                t :: more ->
+                _ :: more ->
                     smallGray :: after more
     in
     start (Array.toList <| scoreThresholds maxScore)

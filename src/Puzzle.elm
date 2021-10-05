@@ -83,11 +83,14 @@ type alias User =
     String
 
 
-totalScore : Maybe User -> Dict String (List User) -> Int
-totalScore userMay found =
+{-| Score for a user, which may or may not be the player, by adding up the visible words which
+they have found. If the given user is not the player, this is the
+-}
+apparentScore : Maybe User -> PuzzleResponse -> Int
+apparentScore userMay resp =
     let
-        userMatches =
-            case userMay of
+        userMatches u =
+            case u of
                 Just user ->
                     List.any ((==) user)
 
@@ -95,7 +98,12 @@ totalScore userMay found =
                     always True
 
         score word users =
-            if userMatches users then
+            -- Basically, the player (the one who's looking) and the other user (the one
+            -- they're looking at) *both* have to be in the list of users who found the word
+            -- for it to count. If looking at self, then both refer to the same user and it
+            -- still works.
+            -- If I could make this simpler, I certainly would.
+            if userMatches userMay users && userMatches resp.user users then
                 wordScore word
 
             else
@@ -104,7 +112,25 @@ totalScore userMay found =
         go word users acc =
             acc + score word users
     in
-    Dict.foldl go 0 found
+    Dict.foldl go 0 resp.found
+
+
+{-| Portion of the total score for a user (not the player), which is accounted for by words that
+aren't also found by the player; that is, the score for words that aren't in view when looking at
+today's puzzle.
+-}
+unsharedScore : User -> PuzzleResponse -> Int
+unsharedScore user resp =
+    let
+        sharedScore =
+            apparentScore (Just user) resp
+
+        totalScore =
+            Dict.get user resp.friends
+                |> Maybe.map .score
+                |> Maybe.withDefault 0
+    in
+    totalScore - sharedScore
 
 
 wordScore : String -> Int
