@@ -12,8 +12,11 @@ In addition, you get these features:
 
 - see the total score for each player
 - for each word you've found, see which other player(s) also found it
+- see how many points each of the other players has for words that you haven't found
 - see the group score considering your words *and* your friends' words
 - *no hints*, even if you open Web Inspector
+
+You can also review every previous puzzle, including all the words and who found them.
 
 For a demo, see https://spelling-bee-with-enemies.herokuapp.com, but please note that not all
 of the features work. If you're interested in hosting a server for yourself and your friends,
