@@ -1,4 +1,18 @@
-module Puzzle exposing (..)
+module Puzzle exposing
+    ( Puzzle
+    , PuzzleBackend
+    , PuzzleId
+    , PuzzleResponse
+    , User
+    , UserInfo
+    , apparentScore
+    , herokuBaseUrl
+    , isPangram
+    , relativeBaseUrl
+    , unsharedScore
+    , webBackend
+    , wordScore
+    )
 
 import Dict exposing (Dict)
 import Http
@@ -20,11 +34,6 @@ herokuBaseUrl =
 relativeBaseUrl : String
 relativeBaseUrl =
     "/"
-
-
-baseUrl : String
-baseUrl =
-    relativeBaseUrl
 
 
 {-| A puzzle, along with some information about the state of solving it.
@@ -153,88 +162,93 @@ isPangram str =
     (Set.size << Set.fromList << String.toList) str == 7
 
 
-getPuzzle : Maybe PuzzleId -> (Result Http.Error PuzzleResponse -> msg) -> Cmd msg
-getPuzzle puzzle_id handler =
-    case puzzle_id of
-        Nothing ->
-            Http.get
-                { url = baseUrl ++ "puzzle"
-                , expect = Http.expectJson handler decodePuzzleResponse
-                }
-
-        Just pid ->
-            Http.get
-                { url = baseUrl ++ "puzzle/" ++ String.fromInt pid
-                , expect = Http.expectJson handler decodePuzzleResponse
-                }
-
-
-{-| TODO: the body here will be a PuzzleResponse at some point, mainly so the Guest user can get
-information about some demo user (probably Moss).
+{-| Wrap up the endpoints in a record, which could be stubbed for testing.
 -}
-postWord : (Result Http.Error String -> msg) -> String -> Cmd msg
-postWord handler word =
-    Http.post
-        { url = baseUrl ++ "word"
-        , body = Http.jsonBody <| Encode.string word
-        , expect = Http.expectWhatever (handler << Result.map (always word))
-        }
+type alias PuzzleBackend msg =
+    { getPuzzle : Maybe PuzzleId -> (Result Http.Error PuzzleResponse -> msg) -> Cmd msg
+    , postWord : (Result Http.Error String -> msg) -> String -> Cmd msg
+    }
 
 
-decodePuzzleResponse : Decoder PuzzleResponse
-decodePuzzleResponse =
-    Decode.succeed PuzzleResponse
-        |> required "user" (nullable string)
-        |> required "id" int
-        |> required "nextPuzzleId" (nullable int)
-        |> required "previousPuzzleId" (nullable int)
-        |> required "puzzle" decodePuzzle
-        |> required "found" (dict (list string))
-        |> required "hints" decodeHints
-        |> required "friends" (dict decodeUserInfo)
-        |> required "co-op" decodeGroupInfo
-
-
-decodePuzzle : Decoder Puzzle
-decodePuzzle =
-    Decode.succeed Puzzle
-        |> required "expiration" (nullable int)
-        -- TODO: timestamp
-        |> required "displayWeekday" string
-        |> required "displayDate" string
-        |> required "printDate" string
-        |> optional "editor" string "Anonymous"
-        |> required "centerLetter" char
-        |> required "outerLetters" (list char)
-
-
-decodeHints : Decoder Hints
-decodeHints =
-    Decode.succeed Hints
-        |> required "maxScore" int
-
-
-decodeUserInfo : Decoder UserInfo
-decodeUserInfo =
-    Decode.succeed UserInfo
-        |> required "score" int
-
-
-decodeGroupInfo : Decoder GroupInfo
-decodeGroupInfo =
-    Decode.succeed GroupInfo
-        |> required "score" int
-
-
-char : Decoder Char
-char =
+webBackend : String -> PuzzleBackend msg
+webBackend baseUrl =
     let
-        toChar str =
-            case String.toList str of
-                [ c ] ->
-                    Decode.succeed c
+        decodePuzzleResponse : Decoder PuzzleResponse
+        decodePuzzleResponse =
+            Decode.succeed PuzzleResponse
+                |> required "user" (nullable string)
+                |> required "id" int
+                |> required "nextPuzzleId" (nullable int)
+                |> required "previousPuzzleId" (nullable int)
+                |> required "puzzle" decodePuzzle
+                |> required "found" (dict (list string))
+                |> required "hints" decodeHints
+                |> required "friends" (dict decodeUserInfo)
+                |> required "co-op" decodeGroupInfo
 
-                _ ->
-                    Decode.fail "expected single char"
+        decodePuzzle : Decoder Puzzle
+        decodePuzzle =
+            Decode.succeed Puzzle
+                |> required "expiration" (nullable int)
+                -- TODO: timestamp
+                |> required "displayWeekday" string
+                |> required "displayDate" string
+                |> required "printDate" string
+                |> optional "editor" string "Anonymous"
+                |> required "centerLetter" char
+                |> required "outerLetters" (list char)
+
+        decodeHints : Decoder Hints
+        decodeHints =
+            Decode.succeed Hints
+                |> required "maxScore" int
+
+        decodeUserInfo : Decoder UserInfo
+        decodeUserInfo =
+            Decode.succeed UserInfo
+                |> required "score" int
+
+        decodeGroupInfo : Decoder GroupInfo
+        decodeGroupInfo =
+            Decode.succeed GroupInfo
+                |> required "score" int
+
+        char : Decoder Char
+        char =
+            let
+                toChar str =
+                    case String.toList str of
+                        [ c ] ->
+                            Decode.succeed c
+
+                        _ ->
+                            Decode.fail "expected single char"
+            in
+            string |> andThen toChar
     in
-    string |> andThen toChar
+    { getPuzzle =
+        \puzzle_id handler ->
+            case puzzle_id of
+                Nothing ->
+                    Http.get
+                        { url = baseUrl ++ "puzzle"
+                        , expect = Http.expectJson handler decodePuzzleResponse
+                        }
+
+                Just pid ->
+                    Http.get
+                        { url = baseUrl ++ "puzzle/" ++ String.fromInt pid
+                        , expect = Http.expectJson handler decodePuzzleResponse
+                        }
+
+    {- TODO: the body here will be a PuzzleResponse at some point, mainly so the Guest user can get
+       information about some demo user (probably Moss).
+    -}
+    , postWord =
+        \handler word ->
+            Http.post
+                { url = baseUrl ++ "word"
+                , body = Http.jsonBody <| Encode.string word
+                , expect = Http.expectWhatever (handler << Result.map (always word))
+                }
+    }
