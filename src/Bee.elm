@@ -1,4 +1,4 @@
-module Bee exposing (Model, Msg, beeMain)
+module Bee exposing (Model, Msg, beeMain, beeView)
 
 import Array exposing (Array)
 import Browser
@@ -52,7 +52,7 @@ beeMain backend =
         { init = init backend
         , subscriptions = subscriptions
         , update = update backend
-        , view = view
+        , view = beeView
         }
 
 
@@ -255,8 +255,8 @@ tempLocalInsertFound word data =
     }
 
 
-view : Model -> Html Msg
-view model =
+beeView : Model -> Html Msg
+beeView model =
     let
         body =
             case model.data of
