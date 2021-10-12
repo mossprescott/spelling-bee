@@ -459,81 +459,86 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
                 Group _ ->
                     [ Font.semiBold, Font.italic ]
     in
-    Element.table
-        [ width fill
-        , spacing 9
-        , centerX
-        , Font.size 16
+    column
+        [ spacing 10
         ]
-        { data = entries
-        , columns =
-            [ spacerColumn
-            , { header = none
-              , width = shrink
-              , view =
-                    \( entry, _ ) ->
-                        centerTextCell <|
-                            let
-                                name =
-                                    case entry of
-                                        Player n _ ->
-                                            n
+        [ text "Friends"
+        , Element.table
+            [ width fill
+            , spacing 9
+            , centerX
+            , Font.size 16
+            ]
+            { data = entries
+            , columns =
+                [ spacerColumn
+                , { header = none
+                  , width = shrink
+                  , view =
+                        \( entry, _ ) ->
+                            centerTextCell <|
+                                let
+                                    name =
+                                        case entry of
+                                            Player n _ ->
+                                                n
 
-                                        Friend n _ _ _ ->
-                                            n
+                                            Friend n _ _ _ ->
+                                                n
 
-                                        Group _ ->
-                                            "Group"
-                            in
-                            el (playerFontStyles entry) <| text name
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \( entry, score ) ->
-                        case entry of
-                            Player _ hasPangram ->
-                                scoreThermo (smallThermoStyle blueBgColor) maxScore score hasPangram
-
-                            Friend _ color _ hasPangram ->
-                                if score > 0 then
-                                    scoreThermo (smallThermoStyle color) maxScore score hasPangram
-
-                                else
-                                    none
-
-                            Group hasAllPangrams ->
-                                scoreThermo (smallThermoStyle blueBgColor) maxScore score hasAllPangrams
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \( entry, score ) ->
-                        centerTextCell <|
-                            el (playerFontStyles entry ++ [ Font.size friendScoreSize ]) (text <| String.fromInt score)
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \( entry, _ ) ->
-                        centerTextCell <|
+                                            Group _ ->
+                                                "Group"
+                                in
+                                el (playerFontStyles entry) <| text name
+                  }
+                , { header = none
+                  , width = shrink
+                  , view =
+                        \( entry, score ) ->
                             case entry of
-                                Group _ ->
-                                    el [ Font.size friendScoreSize ] (text <| "(max: " ++ String.fromInt maxScore ++ ")")
+                                Player _ hasPangram ->
+                                    scoreThermo (smallThermoStyle blueBgColor) maxScore score hasPangram
 
-                                Player _ _ ->
-                                    none
-
-                                Friend _ _ extraScore _ ->
-                                    if extraScore > 0 then
-                                        el [ Font.size friendScoreSize ] (text <| "(" ++ String.fromInt extraScore ++ ")")
+                                Friend _ color _ hasPangram ->
+                                    if score > 0 then
+                                        scoreThermo (smallThermoStyle color) maxScore score hasPangram
 
                                     else
                                         none
-              }
-            , spacerColumn
-            ]
-        }
+
+                                Group hasAllPangrams ->
+                                    scoreThermo (smallThermoStyle blueBgColor) maxScore score hasAllPangrams
+                  }
+                , { header = none
+                  , width = shrink
+                  , view =
+                        \( entry, score ) ->
+                            centerTextCell <|
+                                el (playerFontStyles entry ++ [ Font.size friendScoreSize ]) (text <| String.fromInt score)
+                  }
+                , { header = none
+                  , width = shrink
+                  , view =
+                        \( entry, _ ) ->
+                            centerTextCell <|
+                                case entry of
+                                    Group _ ->
+                                        el [ Font.size friendScoreSize ] (text <| "(max: " ++ String.fromInt maxScore ++ ")")
+
+                                    Player _ _ ->
+                                        none
+
+                                    Friend _ _ extraScore _ ->
+                                        if extraScore > 0 then
+                                            el [ Font.size friendScoreSize ] (text <| "(" ++ String.fromInt extraScore ++ ")")
+
+                                        else
+                                            none
+                  }
+                , spacerColumn
+                ]
+            }
+        ]
 
 
 {-| Select colors and initials for each user, spreading out the colors so that users with the same
@@ -695,7 +700,6 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
     in
     column
         [ spacing 5
-        , Font.size 16
         ]
         [ row
             [ spacing 15 ]
