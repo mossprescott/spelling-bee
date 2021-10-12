@@ -23,6 +23,46 @@ of the features work. If you're interested in hosting a server for yourself and 
 get in touch and I can help you get started.
 
 
+## UI
+
+Some things about the UI that might not be obvious:
+
+A player's score "bubble" is filled with a solid color if they have found at least one pangram.
+
+The number in the main, colored score bubble for the player is the score for all of the words
+found by the player so far. A number like "+7" in the grey bubble to the right of it is the number
+of points needed to reach the next level.
+
+The last bubble is filled when the player reaches the "Genius" score for the day. If the player
+finds all possible words, the bubble turns yellow (and the secret "Queen Bee" level is shown.)
+
+### Friend and Group Scores
+
+The server keeps track of a set of friends for each player. When authenticated, the current
+player's score and each friend's score is shown below the word list.
+
+Score bubbles for each friend work just like the main score display, except that the total score
+shown is shown to the right of the bubbles to make it easier to read. Note: the score shown is
+each players' actual total score, including words they found which are not shown anywhere in the
+UI (because the current player  hasn't found them.)
+
+The name and score of the current player (that's you!) are shown in **bold**. Otherwise it just
+shows the same score as appears at the top of the page.
+
+When a number appears in parens after a friend's score, it shows the points that friend
+has earned for words which you do *not* have. For example, if a friend has found all the words
+you have, but also has one additional 5-letter word that you don't, "(5)" will be shown.
+
+The last row of scores shows the score for the whole ***Group***, which is the total point value
+of all words found by the player and any of the friends. The maximum score possible for the day
+is also shown on the right.
+
+The "Group" score bubble is filled if *every* pangram has been found by *someone* in the group.
+That is, on days when more than one pangram is available, the Group score bubble remains
+unfilled as long as there is a pangram that no one has found yet. Note: this is a clue; there
+would otherwise be no way to tell whether another pangram is available.
+
+
 ## Backend
 
 This repo provides a UI for playing. It requires a backend that provides the letters each day,
