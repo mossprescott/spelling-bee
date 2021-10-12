@@ -8,9 +8,9 @@ import Element.Font as Font
 
 
 type alias ThermoStyle =
-    { unfilled : Color
-    , filled : Color
-    , maxed : Color
+    { unfilled : Color -- e.g. grey
+    , filled : Color -- e.g. blue
+    , maxed : Color -- e.g. yellow for Queen Bee
     , labelSize : Int
     , bigRadius : Int
     , smallRadius : Int
@@ -22,10 +22,11 @@ type alias ThermoStyle =
 
 {-| Displays a single score value visually as a "thermometer" which fills in from the left,
 comparing the score to a set of threshold values, which are derived from the maximum
-possible score.
+possible score. When "hasBonus" is true (i.e. the player has a pangram), any large bubbles
+are filled with solid color.
 -}
-scoreThermo : ThermoStyle -> Int -> Int -> Element msg
-scoreThermo style maxScore score =
+scoreThermo : ThermoStyle -> Int -> Int -> Bool -> Element msg
+scoreThermo style maxScore score hasBonus =
     let
         connector =
             el
@@ -39,7 +40,7 @@ scoreThermo style maxScore score =
         ]
         (List.intersperse connector <|
             List.map renderBubble <|
-                scoreBubbles style maxScore score
+                scoreBubbles style maxScore score hasBonus
         )
 
 
@@ -79,8 +80,12 @@ scoreRating maxScore score =
                     Array.toList thresholds
 
 
-scoreBubbles : ThermoStyle -> Int -> Int -> List Bubble
-scoreBubbles style maxScore score =
+{-| Render the line of bubbles corresponding to a score and "bonus" flag, in the context of
+a certain maxScore and style.
+The bonus means you have a pangram, usually.
+-}
+scoreBubbles : ThermoStyle -> Int -> Int -> Bool -> List Bubble
+scoreBubbles style maxScore score hasBonus =
     let
         scoreLabel =
             if style.showScore then
@@ -90,17 +95,20 @@ scoreBubbles style maxScore score =
                 Nothing
 
         bigBlue =
-            Bubble style.filled scoreLabel Circle style.bigRadius
+            Bubble style.filled scoreLabel Circle style.bigRadius hasBonus
 
         bigGray t =
             if style.showNext then
-                Bubble style.unfilled (Just <| "+" ++ String.fromInt (t - score)) Circle style.bigRadius
+                Bubble style.unfilled (Just <| "+" ++ String.fromInt (t - score)) Circle style.bigRadius False
 
             else
                 smallGray
 
+        smallBlue =
+            Bubble style.filled Nothing Circle style.smallRadius True
+
         smallGray =
-            Bubble style.unfilled Nothing Circle style.smallRadius
+            Bubble style.unfilled Nothing Circle style.smallRadius True
 
         squared bubble =
             { bubble | shape = Square }
@@ -131,7 +139,7 @@ scoreBubbles style maxScore score =
                             :: after more
 
                     else if score >= t2 then
-                        Bubble style.filled Nothing Circle style.smallRadius
+                        smallBlue
                             :: start (t2 :: more)
 
                     else if score >= t1 then
@@ -178,6 +186,7 @@ type alias Bubble =
     , label : Maybe String
     , shape : BubbleShape
     , radius : Int
+    , fill : Bool
     }
 
 
@@ -189,18 +198,27 @@ type BubbleShape
 renderBubble : Bubble -> Element msg
 renderBubble bubble =
     el
-        [ Background.color bubble.color
-        , Border.rounded
-            (if bubble.shape == Circle then
-                bubble.radius
+        ([ if bubble.fill then
+            Just <| Background.color bubble.color
 
-             else
-                0
-            )
-        , width (px <| 2 * bubble.radius)
-        , height (px <| 2 * bubble.radius)
-        , centerY
-        ]
+           else
+            Nothing
+         , Just <| Border.color bubble.color
+         , Just <| Border.width 2
+         , Just <|
+            Border.rounded
+                (if bubble.shape == Circle then
+                    bubble.radius
+
+                 else
+                    0
+                )
+         , Just <| width (px <| 2 * bubble.radius)
+         , Just <| height (px <| 2 * bubble.radius)
+         , Just <| centerY
+         ]
+            |> List.filterMap identity
+        )
         (el
             [ centerX, centerY ]
             (text <| Maybe.withDefault "" bubble.label)

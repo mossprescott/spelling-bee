@@ -1,7 +1,7 @@
 -- Non-application previews for use with `elm reactor`.
 
 
-module Demo.Main exposing (..)
+module Demo.FrozenPrevious exposing (..)
 
 import Array
 import Bee exposing (Model, Msg, beeView)
@@ -27,10 +27,10 @@ model =
         Just
             { user = Just "jeff"
             , id = 1234
-            , nextPuzzleId = Nothing
+            , nextPuzzleId = Just 1235
             , previousPuzzleId = Just 1233
             , puzzle =
-                { expiration = Just 1614326400
+                { expiration = Nothing
                 , displayWeekday = "Thursday"
                 , displayDate = "February 25, 2021"
                 , printDate = "2021-02-25"
@@ -42,23 +42,26 @@ model =
                 Dict.fromList
                     [ ( "glom", [ "jeff", "steve" ] )
                     , ( "gloom", [ "jeff" ] )
+                    , ( "moral", [ "steve" ] )
+                    , ( "amoral", [ "steve" ] )
+                    , ( "aglomural", [] )
                     ]
             , hints =
                 { maxScore = 150
                 }
             , friends =
                 Dict.fromList
-                    [ ( "steve", { score = 120 } )
-                    , ( "jeff", { score = 6 } )
-                    , ( "dave", { score = 0 } )
+                    [ ( "steve", { score = 120, hasPangram = True } )
+                    , ( "jeff", { score = 6, hasPangram = False } )
+                    , ( "dave", { score = 0, hasPangram = False } )
                     ]
-            , group = { score = 121 }
+            , group = { score = 121, hasAllPangrams = False }
             }
     , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
     , input = [ 'l', 'o', 'a', 'm' ]
     , selectedPuzzleId = Just 1234
     , message = Nothing
-    , wordSort = Alpha
+    , wordSort = Length
     }
 
 

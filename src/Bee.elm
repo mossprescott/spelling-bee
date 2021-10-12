@@ -10,12 +10,14 @@ import Http
 import List
 import Puzzle
     exposing
-        ( Puzzle
+        ( GroupInfo
+        , Puzzle
         , PuzzleBackend
         , PuzzleId
         , PuzzleResponse
         , UserInfo
         , apparentScore
+        , isPangram
         , unsharedScore
         , wordScore
         )
@@ -288,7 +290,7 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner data.hints.maxScore (apparentScore data.user data)
+                                  scoreBanner data.hints.maxScore (apparentScore user data) localHasPangram
                                 , whenLatest <| entered Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     hint <|
@@ -319,7 +321,7 @@ beeView model =
                                 , Element.spacing 15
                                 ]
                                 [ wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
-                                , friendList user friendsPlaying friendToMeta data.hints.maxScore groupScore
+                                , friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
                                 ]
 
                         foundMunged =
@@ -350,7 +352,11 @@ beeView model =
                             Dict.filter (\name info -> name == user || info.score > 0) <|
                                 friends
 
-                        ( user, friends, groupScore ) =
+                        -- TODO: consider only words for user; false if empty
+                        localHasPangram =
+                            List.any isPangram <| Dict.keys data.found
+
+                        ( user, friends, groupInfo ) =
                             case data.user of
                                 Nothing ->
                                     let
@@ -363,12 +369,12 @@ beeView model =
                                                     0
                                     in
                                     ( "Guest"
-                                    , Dict.insert "Guest" (UserInfo localScore) data.friends
-                                    , localScore
+                                    , Dict.insert "Guest" (UserInfo localScore localHasPangram) data.friends
+                                    , GroupInfo localScore False
                                     )
 
                                 Just name ->
-                                    ( name, data.friends, data.group.score )
+                                    ( name, data.friends, data.group )
                     in
                     threePanel hdr lp rp ftr
 

@@ -1,5 +1,6 @@
 module Puzzle exposing
-    ( Puzzle
+    ( GroupInfo
+    , Puzzle
     , PuzzleBackend
     , PuzzleId
     , PuzzleResponse
@@ -16,7 +17,7 @@ module Puzzle exposing
 
 import Dict exposing (Dict)
 import Http
-import Json.Decode as Decode exposing (Decoder, andThen, dict, int, list, nullable, string)
+import Json.Decode as Decode exposing (Decoder, andThen, bool, dict, int, list, nullable, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Json.Encode as Encode
 import Set
@@ -73,6 +74,7 @@ type alias Hints =
 
 type alias UserInfo =
     { score : Int
+    , hasPangram : Bool
     }
 
 
@@ -81,6 +83,7 @@ Called "co-op" in JSON, but how do you spell that in camelCase?
 -}
 type alias GroupInfo =
     { score : Int
+    , hasAllPangrams : Bool
     }
 
 
@@ -95,13 +98,13 @@ type alias User =
 {-| Score for a user, which may or may not be the player, by adding up the visible words which
 they have found. If the given user is not the player, this is the
 -}
-apparentScore : Maybe User -> PuzzleResponse -> Int
-apparentScore userMay resp =
+apparentScore : User -> PuzzleResponse -> Int
+apparentScore user resp =
     let
-        userMatches u =
-            case u of
-                Just user ->
-                    List.any ((==) user)
+        userMatches userMay =
+            case userMay of
+                Just u ->
+                    List.any ((==) u)
 
                 Nothing ->
                     always True
@@ -109,10 +112,11 @@ apparentScore userMay resp =
         score word users =
             -- Basically, the player (the one who's looking) and the other user (the one
             -- they're looking at) *both* have to be in the list of users who found the word
-            -- for it to count. If looking at self, then both refer to the same user and it
-            -- still works.
+            -- for it to count. This is important when you look at previous days, where words
+            -- are present that either or both users may not have found.
+            -- If looking at self, then both refer to the same user and it still works.
             -- If I could make this simpler, I certainly would.
-            if userMatches userMay users && userMatches resp.user users then
+            if userMatches (Just user) users && userMatches resp.user users then
                 wordScore word
 
             else
@@ -132,7 +136,7 @@ unsharedScore : User -> PuzzleResponse -> Int
 unsharedScore user resp =
     let
         sharedScore =
-            apparentScore (Just user) resp
+            apparentScore user resp
 
         totalScore =
             Dict.get user resp.friends
@@ -207,11 +211,14 @@ webBackend baseUrl =
         decodeUserInfo =
             Decode.succeed UserInfo
                 |> required "score" int
+                |> required "hasPangram" bool
 
         decodeGroupInfo : Decoder GroupInfo
         decodeGroupInfo =
+            -- TODO: require hasAllPangrams
             Decode.succeed GroupInfo
                 |> required "score" int
+                |> required "hasAllPangrams" bool
 
         char : Decoder Char
         char =

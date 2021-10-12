@@ -28,18 +28,18 @@ view =
             [ Element.spacing 10
             , Element.padding 10
             ]
-            [ scoreBanner 100 0 -- Beginner (0)
-            , scoreBanner 100 43 -- Great
-            , scoreBanner 100 50 -- Amazing
-            , scoreBanner 100 72 -- Genius (+2)
-            , scoreBanner 100 100 -- Queen Bee
+            [ scoreBanner 100 0 False -- Beginner (0)
+            , scoreBanner 100 43 False -- Great
+            , scoreBanner 100 50 True -- Amazing
+            , scoreBanner 100 72 False -- Genius (+2)
+            , scoreBanner 100 100 True -- Queen Bee
             , Element.el [ Element.padding 20 ] Element.none
             , friendList
                 "Steve"
                 (Dict.fromList
-                    [ ( "Steve", UserInfo 72 )
-                    , ( "Dave", UserInfo 0 )
-                    , ( "Jeff", UserInfo 57 )
+                    [ ( "Steve", UserInfo 72 True )
+                    , ( "Dave", UserInfo 0 False )
+                    , ( "Jeff", UserInfo 57 True )
                     ]
                 )
                 (Dict.fromList
@@ -49,5 +49,6 @@ view =
                 )
                 100
                 87
+                False
             ]
         )

@@ -128,8 +128,8 @@ puzzleFooter editor =
 
 {-| View with the score "thermo" along with the name of the highest level that's been reached.
 -}
-scoreBanner : Int -> Int -> Element msg
-scoreBanner maxScore score =
+scoreBanner : Int -> Int -> Bool -> Element msg
+scoreBanner maxScore score hasPangram =
     column
         [ spacing 3
         , centerX
@@ -139,7 +139,7 @@ scoreBanner maxScore score =
             , centerX
             ]
             (text <| scoreRating maxScore score)
-        , scoreThermo mainThermoStyle maxScore score
+        , scoreThermo mainThermoStyle maxScore score hasPangram
         ]
 
 
@@ -311,43 +311,54 @@ buttonImpl label description msg minWidth =
 distinguishing color and initial, or the group as a whole.
 -}
 type FriendEntry
-    = Player User
-    | Friend User Color Int -- note: not actually using the initial at this point
-    | Group
+    = Player User Bool
+    | Friend User Color Int Bool -- note: not actually using the initial at this point
+    | Group Bool
 
 
-friendList : User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Element msg
-friendList user friends decorations maxScore groupScore =
+friendList : User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
+friendList user friends decorations maxScore groupScore groupHasAllPangrams =
     let
         sortedFriends =
             friends
                 |> Dict.toList
                 |> List.sortBy (\( _, info ) -> -info.score)
 
+        toEntry : User -> FriendEntry
         toEntry u =
             if u == user then
-                Player user
+                Player user (userHasPangram user)
 
             else
                 case Dict.get u decorations of
                     Just ( color, extraScore ) ->
-                        Friend u color extraScore
+                        Friend u color extraScore (userHasPangram u)
 
                     -- Note: doesn't happen if inputs are correct.
                     Nothing ->
-                        Friend u grayBgColor 0
+                        Friend u grayBgColor 0 False
+
+        userHasPangram : User -> Bool
+        userHasPangram u =
+            case Dict.get u friends of
+                Just info ->
+                    info.hasPangram
+
+                -- Note: doesn't happen if inputs are correct.
+                Nothing ->
+                    False
 
         -- Note: leaving out the Group entry if there are no friends (i.e. Guest mode), but
         -- include it otherwise, even if no other user has any points, because it conveys the max score.
         entries : List ( FriendEntry, Int )
         entries =
-            (if List.length sortedFriends > 1 then
-                [ ( Group, groupScore ) ]
+            List.map (\( u, ui ) -> ( toEntry u, ui.score )) sortedFriends
+                ++ (if List.length sortedFriends > 1 then
+                        [ ( Group groupHasAllPangrams, groupScore ) ]
 
-             else
-                []
-            )
-                ++ List.map (\( u, ui ) -> ( toEntry u, ui.score )) sortedFriends
+                    else
+                        []
+                   )
 
         spacerColumn =
             { header = none
@@ -362,6 +373,17 @@ friendList user friends decorations maxScore groupScore =
                 [ height (px <| 2 * (smallThermoStyle blueBgColor).bigRadius)
                 ]
                 [ contents ]
+
+        playerFontStyles entry =
+            case entry of
+                Player _ _ ->
+                    [ Font.bold ]
+
+                Friend _ _ _ _ ->
+                    []
+
+                Group _ ->
+                    [ Font.bold, Font.italic ]
     in
     Element.table
         [ width fill
@@ -377,40 +399,44 @@ friendList user friends decorations maxScore groupScore =
               , view =
                     \( entry, _ ) ->
                         centerTextCell <|
-                            case entry of
-                                Player name ->
-                                    el [ Font.bold ] (text name)
+                            let
+                                name =
+                                    case entry of
+                                        Player n _ ->
+                                            n
 
-                                Friend name _ _ ->
-                                    el [] (text name)
+                                        Friend n _ _ _ ->
+                                            n
 
-                                Group ->
-                                    el [ Font.bold, Font.italic ] (text "Group")
+                                        Group _ ->
+                                            "Group"
+                            in
+                            el (playerFontStyles entry) <| text name
               }
             , { header = none
               , width = shrink
               , view =
                     \( entry, score ) ->
                         case entry of
-                            Player _ ->
-                                scoreThermo (smallThermoStyle blueBgColor) maxScore score
+                            Player _ hasPangram ->
+                                scoreThermo (smallThermoStyle blueBgColor) maxScore score hasPangram
 
-                            Friend _ color _ ->
+                            Friend _ color _ hasPangram ->
                                 if score > 0 then
-                                    scoreThermo (smallThermoStyle color) maxScore score
+                                    scoreThermo (smallThermoStyle color) maxScore score hasPangram
 
                                 else
                                     none
 
-                            Group ->
-                                scoreThermo (smallThermoStyle blueBgColor) maxScore score
+                            Group hasAllPangrams ->
+                                scoreThermo (smallThermoStyle blueBgColor) maxScore score hasAllPangrams
               }
             , { header = none
               , width = shrink
               , view =
-                    \( _, score ) ->
+                    \( entry, score ) ->
                         centerTextCell <|
-                            el [ Font.size friendScoreSize ] (text <| String.fromInt score)
+                            el (playerFontStyles entry ++ [ Font.size friendScoreSize ]) (text <| String.fromInt score)
               }
             , { header = none
               , width = shrink
@@ -418,14 +444,18 @@ friendList user friends decorations maxScore groupScore =
                     \( entry, _ ) ->
                         centerTextCell <|
                             case entry of
-                                Group ->
-                                    el [ Font.size friendScoreSize ] (text <| "(of " ++ String.fromInt maxScore ++ ")")
+                                Group _ ->
+                                    el [ Font.size friendScoreSize ] (text <| "(max: " ++ String.fromInt maxScore ++ ")")
 
-                                Player _ ->
+                                Player _ _ ->
                                     none
 
-                                Friend _ _ extraScore ->
-                                    el [ Font.size friendScoreSize ] (text <| "(" ++ String.fromInt extraScore ++ "+)")
+                                Friend _ _ extraScore _ ->
+                                    if extraScore > 0 then
+                                        el [ Font.size friendScoreSize ] (text <| "(" ++ String.fromInt extraScore ++ ")")
+
+                                    else
+                                        none
               }
             , spacerColumn
             ]
