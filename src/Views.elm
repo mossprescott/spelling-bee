@@ -1,5 +1,6 @@
 module Views exposing
-    ( WordEntry
+    ( Size
+    , WordEntry
     , WordListSortOrder(..)
     , assignColors
     , controlButton
@@ -8,10 +9,10 @@ module Views exposing
     , hint
     , hive
     , loadingHeader
+    , mainLayout
     , puzzleFooter
     , puzzleHeader
     , scoreBanner
-    , threePanel
     , wordList
     )
 
@@ -32,33 +33,106 @@ import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
 
 
-{-| Layout the page with three main elements: a header that spans the top of the page,
-and two panels which will either sit side-by-side or flow vertically.
+type alias Size =
+    { width : Int, height : Int }
+
+
+{-| Layout the page's main elements, according to the amount of available space (mainly, width).
+
+If the view is only wide enough for one column, then everything goes in a single centered column.
+
+If the viewport is wide enough for two columns, then the main game elements go on the right
+(sorry, lefties), and everything else goes on the left. The goal is to be usable on a typical
+phone in landscape, but probably not on smaller phones.
+
+If the viewport is wide enough for three, then we must be on a large tablet or desktop,
+and the game gets centered with words to the left and scores to the right, with lots of extra
+space around.
+
+Finally, some white space is added above and below, if it looks like there's more than enough
+vertical space for the main game view.
+
+`desiredColumnWidth` is an arbitrary fixed value, but corresponds to roughly the width of the
+main game elements, plus a little extra space.
+
 -}
-threePanel : Element msg -> Element msg -> Element msg -> Element msg -> Element msg
-threePanel header content1 content2 footer =
-    column
-        [ spacing 15
-        , padding 5
-        ]
-        [ header
-        , wrappedRow
-            [ spacing 15
+mainLayout : Element msg -> Element msg -> Element msg -> Element msg -> Element msg -> Int -> Size -> Element msg
+mainLayout header game words friends footer desiredColumnWidth actualViewport =
+    let
+        padYIfMoreThan ratio =
+            paddingXY
+                0
+                (if toFloat actualViewport.height > ratio * toFloat desiredColumnWidth then
+                    15
+
+                 else
+                    0
+                )
+    in
+    if actualViewport.width < desiredColumnWidth * 2 then
+        -- 1 column:
+        column
+            [ padYIfMoreThan 2.5
+            , centerX
+            , spacing 15
             ]
-            [ content1
-            , content2
+            [ header
+            , game
+            , words
+            , friends
+            , footer
             ]
-        , footer
-        ]
+
+    else if actualViewport.width < desiredColumnWidth * 3 then
+        -- 2 columns:
+        row
+            [ padYIfMoreThan 1.3
+            , centerX
+            , spacing 30
+            ]
+            [ column
+                [ alignTop
+                , spacing 15
+                ]
+                [ header
+                , words
+                , friends
+                , footer
+                ]
+            , column
+                [ alignTop ]
+                [ game
+                ]
+            ]
+
+    else
+        -- 3 columns:
+        row
+            [ paddingXY 15 15
+            , centerX
+            , spacing 30
+            ]
+            [ words
+            , column
+                [ centerX
+                , spacing 25
+                ]
+                [ header
+                , game
+                , footer
+                ]
+            , friends
+            ]
 
 
 puzzleHeader : String -> Maybe msg -> Maybe msg -> Element msg
 puzzleHeader date previousMsg nextMsg =
     column
-        [--centerX
+        [ centerX
         ]
         [ row
             [ spacing 10
+            , Font.size 16
             ]
             [ lightweightButton "←" "Previous Puzzle" previousMsg
             , el [] (text date)
@@ -91,8 +165,8 @@ loadingHeader msg =
 puzzleFooter : String -> Element msg
 puzzleFooter editor =
     column
-        [ --centerX
-          spacing 5
+        [ centerX
+        , spacing 5
         ]
         [ el [] (text " ") -- space
         , el
@@ -377,13 +451,13 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
         playerFontStyles entry =
             case entry of
                 Player _ _ ->
-                    [ Font.bold ]
+                    [ Font.semiBold ]
 
                 Friend _ _ _ _ ->
                     []
 
                 Group _ ->
-                    [ Font.bold, Font.italic ]
+                    [ Font.semiBold, Font.italic ]
     in
     Element.table
         [ width fill
@@ -630,6 +704,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 ]
                 (text foundMsg)
             , lightweightButton
+                -- TODO: chronological
                 (case sortOrder of
                     Alpha ->
                         "a↑"

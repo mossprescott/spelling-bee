@@ -4,25 +4,20 @@
 module Demo.FrozenToday exposing (..)
 
 import Array
-import Bee exposing (Model, Msg, beeView)
-import Browser
+import Bee exposing (Model)
+import Demo.FrozenMain exposing (Msg, frozenMain)
 import Dict
-import Html exposing (Html)
 import Puzzle exposing (..)
-import Views exposing (WordListSortOrder(..))
+import Views exposing (Size, WordListSortOrder(..))
 
 
-main : Program () () ()
+main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = ()
-        , update = always
-        , view = view
-        }
+    frozenMain startModel
 
 
-model : Model
-model =
+startModel : Model
+startModel =
     { data =
         Just
             { user = Just "jeff"
@@ -59,9 +54,5 @@ model =
     , selectedPuzzleId = Just 1234
     , message = Nothing
     , wordSort = Alpha
+    , viewport = Size 375 675
     }
-
-
-view : () -> Html ()
-view =
-    always <| Html.map (always ()) <| beeView model

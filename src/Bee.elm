@@ -1,9 +1,17 @@
-module Bee exposing (Model, Msg, beeMain, beeView)
+module Bee exposing
+    ( Model
+    , Msg
+    , beeMain
+    , beeView
+    , startModel
+    )
 
 import Array exposing (Array)
 import Browser
+import Browser.Dom
+import Browser.Events
 import Dict exposing (Dict)
-import Element
+import Element exposing (centerX)
 import Element.Font as Font
 import Html exposing (Html)
 import Http
@@ -23,9 +31,11 @@ import Puzzle
         )
 import Random
 import Random.List exposing (shuffle)
+import Task
 import Views
     exposing
-        ( WordEntry
+        ( Size
+        , WordEntry
         , WordListSortOrder(..)
         , assignColors
         , controlButton
@@ -34,10 +44,10 @@ import Views
         , hint
         , hive
         , loadingHeader
+        , mainLayout
         , puzzleFooter
         , puzzleHeader
         , scoreBanner
-        , threePanel
         , wordList
         )
 import Views.Constants exposing (..)
@@ -65,13 +75,25 @@ type alias Model =
     , selectedPuzzleId : Maybe PuzzleId
     , message : Maybe String
     , wordSort : WordListSortOrder
+    , viewport : Size
     }
+
+
+{-| At the start, we know nothing about any puzzle, and we assume a viewport size corresponding to
+a medium-sized phone.
+-}
+startModel : Model
+startModel =
+    Model Nothing Array.empty [] Nothing Nothing Alpha { width = 375, height = 675 }
 
 
 init : PuzzleBackend Msg -> () -> ( Model, Cmd Msg )
 init backend flags_unused =
-    ( Model Nothing Array.empty [] Nothing Nothing Alpha
-    , backend.getPuzzle Nothing ReceivePuzzle
+    ( startModel
+    , Cmd.batch
+        [ Task.perform (\vp -> ReceiveNewViewportSize { width = round vp.viewport.width, height = round vp.viewport.height }) Browser.Dom.getViewport
+        , backend.getPuzzle Nothing ReceivePuzzle
+        ]
     )
 
 
@@ -86,11 +108,12 @@ type Msg
     | ShowPuzzle PuzzleId
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
+    | ReceiveNewViewportSize { width : Int, height : Int }
 
 
 subscriptions : model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -114,9 +137,17 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                ReceiveNewViewportSize size ->
+                    ( { model | viewport = size }
+                    , Cmd.none
+                    )
+
                 _ ->
                     -- Before the initial load, no other msg is meaningful
-                    ( model, Cmd.none )
+                    ( Debug.log ("Puzzle not loaded; ignoring msg" ++ Debug.toString msg)
+                        model
+                    , Cmd.none
+                    )
 
         Just data ->
             case msg of
@@ -173,7 +204,6 @@ update backend msg model =
                     )
 
                 ReceivePuzzle (Result.Ok newData) ->
-                    -- TODO: check if a new day's puzzle was loaded and reset the letters
                     let
                         newLetters =
                             if newData.id /= data.id then
@@ -213,7 +243,7 @@ update backend msg model =
                             )
 
                         Nothing ->
-                            -- When not authenticated, just update the state locally:
+                            -- When not authenticated, hackishly update the state locally:
                             ( { model
                                 | data = Maybe.map (tempLocalInsertFound word) model.data
                                 , input = []
@@ -228,6 +258,11 @@ update backend msg model =
                             | input = []
                             , message = Just "Not in word list"
                         }
+                    , Cmd.none
+                    )
+
+                ReceiveNewViewportSize size ->
+                    ( { model | viewport = size }
                     , Cmd.none
                     )
 
@@ -281,10 +316,11 @@ beeView model =
                         ftr =
                             puzzleFooter data.puzzle.editor
 
-                        lp =
+                        gameView =
                             Element.column
-                                [ Element.width (Element.px 320)
-                                , Element.alignTop
+                                [ --Element.width (Element.px model.viewportWidth)
+                                  -- , Element.alignTop
+                                  centerX
                                 , Element.spacing 10
                                 ]
                                 [ -- Note: this is the player's score based a local count of the words they found,
@@ -312,17 +348,16 @@ beeView model =
                                         , controlButton "🤷" "Shuffle" Shuffle True
                                         , controlButton "✓" "Submit" Submit (isNothing <| inputError model)
                                         ]
+
+                                -- HACK:
+                                -- , Element.el [] (Element.text (String.fromInt model.viewportWidth))
                                 ]
 
-                        rp =
-                            Element.column
-                                [ Element.width (Element.px 300)
-                                , Element.alignTop
-                                , Element.spacing 15
-                                ]
-                                [ wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
-                                , friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
-                                ]
+                        wordsView =
+                            wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
+
+                        friendsView =
+                            friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
 
                         foundMunged =
                             Dict.map
@@ -376,16 +411,16 @@ beeView model =
                                 Just name ->
                                     ( name, data.friends, data.group )
                     in
-                    threePanel hdr lp rp ftr
+                    mainLayout hdr gameView wordsView friendsView ftr
 
                 Nothing ->
-                    threePanel (loadingHeader model.message) Element.none Element.none Element.none
+                    mainLayout (loadingHeader model.message) Element.none Element.none Element.none Element.none
     in
     Element.layout
         [ bodyFont
-        , Font.size 20
+        , Font.size 16
         ]
-        body
+        (body 300 model.viewport)
 
 
 {-| Some local validation for snappier feedback and less traffic to the backend.
