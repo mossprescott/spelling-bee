@@ -227,6 +227,7 @@ entered changedMsg enterMsg shuffleMsg word =
         ]
         [ Input.text
             [ Font.center
+            , htmlAttribute (Html.Attributes.id "input")
             ]
             { text = String.fromList word
             , placeholder = Nothing

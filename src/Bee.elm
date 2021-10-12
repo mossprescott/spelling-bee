@@ -109,6 +109,7 @@ type Msg
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
+    | NoOp String
 
 
 subscriptions : model -> Sub Msg
@@ -126,7 +127,7 @@ update backend msg model =
                         | data = Just data
                         , letters = startLetters data.puzzle
                       }
-                    , Cmd.none
+                    , initialFocusTask model
                     )
 
                 ReceivePuzzle (Result.Err err) ->
@@ -266,6 +267,9 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                NoOp str ->
+                    ( Debug.log str model, Cmd.none )
+
 
 startLetters : Puzzle -> Array Char
 startLetters puzzle =
@@ -279,6 +283,19 @@ startLetters puzzle =
             (Array.fromList [ puzzle.centerLetter ])
             (Array.slice 3 6 outer)
         )
+
+
+{-| For the benefit of desktop users, start with the input field focused, based on there
+being a lot of extra space. Note: this could annoy tablet users, who might rather tap on the
+buttons than use an on-screen keyboard, even if there's a lot of space.
+-}
+initialFocusTask : Model -> Cmd Msg
+initialFocusTask model =
+    if model.viewport.width > 2 * desiredColumnWidth && model.viewport.height > 2 * desiredColumnWidth then
+        Task.attempt (\err -> NoOp (Debug.toString err)) (Browser.Dom.focus "input")
+
+    else
+        Cmd.none
 
 
 tempLocalInsertFound : String -> PuzzleResponse -> PuzzleResponse
@@ -318,9 +335,7 @@ beeView model =
 
                         gameView =
                             Element.column
-                                [ --Element.width (Element.px model.viewportWidth)
-                                  -- , Element.alignTop
-                                  centerX
+                                [ centerX
                                 , Element.spacing 10
                                 ]
                                 [ -- Note: this is the player's score based a local count of the words they found,
@@ -348,9 +363,6 @@ beeView model =
                                         , controlButton "🤷" "Shuffle" Shuffle True
                                         , controlButton "✓" "Submit" Submit (isNothing <| inputError model)
                                         ]
-
-                                -- HACK:
-                                -- , Element.el [] (Element.text (String.fromInt model.viewportWidth))
                                 ]
 
                         wordsView =
@@ -420,7 +432,11 @@ beeView model =
         [ bodyFont
         , Font.size 16
         ]
-        (body 300 model.viewport)
+        (body desiredColumnWidth model.viewport)
+
+
+desiredColumnWidth =
+    300
 
 
 {-| Some local validation for snappier feedback and less traffic to the backend.
