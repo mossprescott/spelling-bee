@@ -641,10 +641,10 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                     List.reverse
 
                 Alpha ->
-                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word) )
+                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word), entry.word )
 
                 Length ->
-                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, -(String.length entry.word) )
+                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, -(String.length entry.word), entry.word )
 
         wordPairs =
             Array.fromList <|
