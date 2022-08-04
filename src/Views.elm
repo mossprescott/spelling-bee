@@ -285,8 +285,8 @@ hintFound entry =
         , height <| px 20
         , spacing 15
         ]
-        [ word entry
-        , text <| "(" ++ String.fromInt (wordScore entry.word) ++ " points)"
+        [ text <| "+" ++ String.fromInt (wordScore entry.word)
+        , word entry
         ]
 
 
