@@ -6,7 +6,9 @@ module Views exposing
     , controlButton
     , entered
     , friendList
-    , hint
+    , hintFound
+    , hintNone
+    , hintWarning
     , hive
     , loadingHeader
     , mainLayout
@@ -28,7 +30,7 @@ import Element.Region as Region
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
-import Puzzle exposing (User, UserInfo, isPangram)
+import Puzzle exposing (User, UserInfo, isPangram, wordScore)
 import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
 
@@ -220,7 +222,7 @@ scoreBanner maxScore score hasPangram =
 {-| Text area where letters appear (and can optionally be entered/editted directly.)
 -}
 entered : (String -> msg) -> msg -> msg -> List Char -> Element msg
-entered changedMsg enterMsg shuffleMsg word =
+entered changedMsg enterMsg shuffleMsg chars =
     row
         [ centerX
         , onKeyStroke <| Dict.fromList [ ( "Enter", enterMsg ), ( " ", shuffleMsg ) ]
@@ -229,7 +231,7 @@ entered changedMsg enterMsg shuffleMsg word =
             [ Font.center
             , htmlAttribute (Html.Attributes.id "input")
             ]
-            { text = String.fromList word
+            { text = String.fromList chars
             , placeholder = Nothing
             , label = Input.labelHidden "Word"
             , onChange = changedMsg << String.filter ((/=) ' ')
@@ -255,16 +257,37 @@ onKeyStroke msgs =
         )
 
 
-hint : Maybe String -> Element msg
-hint str =
+hintNone : Element msg
+hintNone =
+    el
+        [ height <| px 20
+        ]
+        none
+
+
+hintWarning : String -> Element msg
+hintWarning msg =
     el
         [ Font.size 16
         , Font.light
         , Font.color grayFgColor
         , centerX
-        , height (px 18)
+        , height <| px 20
         ]
-        (text <| Maybe.withDefault "" str)
+        (text msg)
+
+
+hintFound : WordEntry -> Element msg
+hintFound entry =
+    row
+        [ Font.size 16
+        , centerX
+        , height <| px 20
+        , spacing 15
+        ]
+        [ word entry
+        , text <| "(" ++ String.fromInt (wordScore entry.word) ++ " points)"
+        ]
 
 
 hive : Char -> Array Char -> Element Char
@@ -601,38 +624,6 @@ decorations indicating which other users also found it.
 wordList : WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
 wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
     let
-        render entry =
-            row [ spacing 5 ]
-                [ el
-                    ((if isPangram entry.word then
-                        [ Font.medium ]
-
-                      else
-                        []
-                     )
-                        ++ (if entry.foundByUser then
-                                []
-
-                            else
-                                [ Font.color grayFgColor, Font.italic ]
-                           )
-                    )
-                    (text entry.word)
-                , row
-                    [ spacing 2 ]
-                    (List.map
-                        (\( str, clr ) ->
-                            el
-                                [ Font.color clr
-                                , Font.size 9
-                                , Font.bold
-                                ]
-                                (text str)
-                        )
-                        entry.friendInitials
-                    )
-                ]
-
         -- Sort words according to the preferred ordering. Note: the words are already alpha sorted in
         -- the Dict, and List.sort is stable, so these sorts are on top of that.
         sortWords =
@@ -666,7 +657,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 [ spacing 2
                 , alignTop
                 ]
-                (List.map render <| Array.toList pairs)
+                (List.map word <| Array.toList pairs)
 
         -- E.g. "Found 1 word", "Found 0 of 32 words"
         foundMsg =
@@ -734,6 +725,40 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
             , renderColumn col2
             , renderColumn col3
             ]
+        ]
+
+
+word : WordEntry -> Element msg
+word entry =
+    row [ spacing 5 ]
+        [ el
+            ((if isPangram entry.word then
+                [ Font.medium ]
+
+              else
+                []
+             )
+                ++ (if entry.foundByUser then
+                        []
+
+                    else
+                        [ Font.color grayFgColor, Font.italic ]
+                   )
+            )
+            (text entry.word)
+        , row
+            [ spacing 2 ]
+            (List.map
+                (\( str, clr ) ->
+                    el
+                        [ Font.color clr
+                        , Font.size 9
+                        , Font.bold
+                        ]
+                        (text str)
+                )
+                entry.friendInitials
+            )
         ]
 
 

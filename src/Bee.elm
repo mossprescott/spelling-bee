@@ -1,5 +1,6 @@
 module Bee exposing
-    ( Model
+    ( Message(..)
+    , Model
     , Msg
     , beeMain
     , beeView
@@ -41,7 +42,9 @@ import Views
         , controlButton
         , entered
         , friendList
-        , hint
+        , hintFound
+        , hintNone
+        , hintWarning
         , hive
         , loadingHeader
         , mainLayout
@@ -73,10 +76,16 @@ type alias Model =
     , letters : Array Char -- the letters of the puzzle, in an arbitrary order for display
     , input : List Char
     , selectedPuzzleId : Maybe PuzzleId
-    , message : Maybe String
+    , message : Message
     , wordSort : WordListSortOrder
     , viewport : Size
     }
+
+
+type Message
+    = None
+    | Warning String
+    | JustFound String
 
 
 {-| At the start, we know nothing about any puzzle, and we assume a viewport size corresponding to
@@ -84,7 +93,7 @@ a medium-sized phone.
 -}
 startModel : Model
 startModel =
-    Model Nothing Array.empty [] Nothing Nothing Alpha { width = 375, height = 675 }
+    Model Nothing Array.empty [] Nothing None Alpha { width = 375, height = 675 }
 
 
 init : PuzzleBackend Msg -> () -> ( Model, Cmd Msg )
@@ -133,7 +142,7 @@ update backend msg model =
                 ReceivePuzzle (Result.Err err) ->
                     ( Debug.log (Debug.toString err)
                         { model
-                            | message = Just <| "Error: " ++ Debug.toString err -- TEMP: this is gonna be ugly
+                            | message = Warning <| "Error: " ++ Debug.toString err -- TEMP: this is gonna be ugly
                         }
                     , Cmd.none
                     )
@@ -155,7 +164,7 @@ update backend msg model =
                 Type c ->
                     ( { model
                         | input = model.input ++ [ c ]
-                        , message = Nothing
+                        , message = None
                       }
                     , Cmd.none
                     )
@@ -164,7 +173,7 @@ update backend msg model =
                 Edit s ->
                     ( { model
                         | input = String.toList (String.toLower s)
-                        , message = Nothing
+                        , message = None
                       }
                     , Cmd.none
                     )
@@ -172,7 +181,7 @@ update backend msg model =
                 Delete ->
                     ( { model
                         | input = (String.toList << String.slice 0 -1 << String.fromList) model.input
-                        , message = Nothing
+                        , message = None
                       }
                     , Cmd.none
                     )
@@ -199,7 +208,7 @@ update backend msg model =
                 ShowPuzzle id ->
                     ( { model
                         | selectedPuzzleId = Just id
-                        , message = Nothing
+                        , message = None
                       }
                     , backend.getPuzzle (Just id) ReceivePuzzle
                     )
@@ -223,22 +232,18 @@ update backend msg model =
                 ReceivePuzzle (Result.Err err) ->
                     ( Debug.log (Debug.toString err)
                         { model
-                            | message = Just "Error while loading puzzle state"
+                            | message = Warning "Error while loading puzzle state"
                         }
                     , Cmd.none
                     )
 
                 ReceiveWord (Result.Ok word) ->
-                    let
-                        message =
-                            "Nice!  +" ++ String.fromInt (wordScore word) ++ " for \"" ++ word ++ "\""
-                    in
                     case data.user of
                         Just _ ->
                             -- When authenticated, just reload the puzzle to get the latest state including friends':
                             ( { model
                                 | input = []
-                                , message = Just message
+                                , message = JustFound word
                               }
                             , backend.getPuzzle model.selectedPuzzleId ReceivePuzzle
                             )
@@ -248,7 +253,7 @@ update backend msg model =
                             ( { model
                                 | data = Maybe.map (tempLocalInsertFound word) model.data
                                 , input = []
-                                , message = Just message
+                                , message = JustFound word
                               }
                             , Cmd.none
                             )
@@ -257,7 +262,7 @@ update backend msg model =
                     ( Debug.log (Debug.toString err)
                         { model
                             | input = []
-                            , message = Just "Not in word list"
+                            , message = Warning "Not in word list"
                         }
                     , Cmd.none
                     )
@@ -344,13 +349,24 @@ beeView model =
                                   scoreBanner data.hints.maxScore (apparentScore user data) localHasPangram
                                 , whenLatest <| entered Edit Submit Shuffle model.input
                                 , whenLatest <|
-                                    hint <|
-                                        case model.message of
-                                            Just msg ->
-                                                Just msg
+                                    case model.message of
+                                        None ->
+                                            case inputError model of
+                                                Just str ->
+                                                    hintWarning str
 
-                                            Nothing ->
-                                                inputError model
+                                                Nothing ->
+                                                    hintNone
+
+                                        Warning msg ->
+                                            hintWarning msg
+
+                                        JustFound word ->
+                                            foundMunged
+                                                |> List.filter ((==) word << .word)
+                                                |> List.head
+                                                |> Maybe.map hintFound
+                                                |> Maybe.withDefault hintNone
                                 , hive data.puzzle.centerLetter model.letters
                                     |> Element.map Type
                                 , whenLatest <|
@@ -429,7 +445,19 @@ beeView model =
                     mainLayout hdr gameView wordsView friendsView ftr
 
                 Nothing ->
-                    mainLayout (loadingHeader model.message) Element.none Element.none Element.none Element.none
+                    let
+                        msg =
+                            case model.message of
+                                None ->
+                                    Nothing
+
+                                Warning str ->
+                                    Just str
+
+                                JustFound _ ->
+                                    Nothing
+                    in
+                    mainLayout (loadingHeader msg) Element.none Element.none Element.none Element.none
     in
     Element.layout
         [ bodyFont

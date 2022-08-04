@@ -4,7 +4,7 @@
 module Demo.FrozenPrevious exposing (..)
 
 import Array
-import Bee exposing (Model)
+import Bee exposing (Message(..), Model)
 import Demo.FrozenMain exposing (Msg, frozenMain)
 import Dict
 import Puzzle exposing (..)
@@ -54,7 +54,7 @@ startModel =
     , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
     , input = [ 'l', 'o', 'a', 'm' ]
     , selectedPuzzleId = Just 1234
-    , message = Nothing
+    , message = None
     , wordSort = Found
     , viewport = Size 375 675
     }

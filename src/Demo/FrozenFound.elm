@@ -1,7 +1,7 @@
--- Non-application previews for use with `elm reactor`.
+module Demo.FrozenFound exposing (..)
 
-
-module Demo.FrozenToday exposing (..)
+{-| Non-application previews for use with `elm reactor`.
+-}
 
 import Array
 import Bee exposing (Message(..), Model)
@@ -20,7 +20,7 @@ startModel : Model
 startModel =
     { data =
         Just
-            { user = Just "jeff"
+            { user = Just "Jeff"
             , id = 1234
             , nextPuzzleId = Nothing
             , previousPuzzleId = Just 1233
@@ -34,25 +34,26 @@ startModel =
                 , outerLetters = [ 'a', 'g', 'l', 'm', 'r', 'u' ]
                 }
             , found =
-                [ ( "glom", [ "jeff", "steve" ] )
-                , ( "gloom", [ "jeff" ] )
-                , ( "amoral", [ "jeff" ] )
+                [ ( "glom", [ "Jeff", "Steve" ] )
+                , ( "gloom", [ "Jeff" ] )
+                , ( "amoral", [ "Jeff" ] )
+                , ( "moral", [ "Jeff", "Steve" ] )
                 ]
             , hints =
                 { maxScore = 150
                 }
             , friends =
                 Dict.fromList
-                    [ ( "steve", { score = 120, hasPangram = True } )
-                    , ( "jeff", { score = 6, hasPangram = False } )
-                    , ( "dave", { score = 0, hasPangram = False } )
+                    [ ( "Steve", { score = 120, hasPangram = True } )
+                    , ( "Jeff", { score = 6, hasPangram = False } )
+                    , ( "Dave", { score = 0, hasPangram = False } )
                     ]
             , group = { score = 121, hasAllPangrams = False }
             }
     , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
-    , input = [ 'l', 'o', 'a', 'm' ]
+    , input = []
     , selectedPuzzleId = Just 1234
-    , message = None
+    , message = JustFound "moral"
     , wordSort = Found
     , viewport = Size 375 675
     }
