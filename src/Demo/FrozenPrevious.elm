@@ -55,6 +55,6 @@ startModel =
     , input = [ 'l', 'o', 'a', 'm' ]
     , selectedPuzzleId = Just 1234
     , message = Nothing
-    , wordSort = Length
+    , wordSort = Found
     , viewport = Size 375 675
     }

@@ -15,7 +15,7 @@ import Views.Constants exposing (..)
 
 main =
     Browser.sandbox
-        { init = Model Alpha
+        { init = Model Found
         , update = update
         , view = view
         }

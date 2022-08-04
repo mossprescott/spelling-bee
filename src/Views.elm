@@ -568,23 +568,23 @@ assignColors users =
         zipRolling (List.sort users) friendColors
 
 
-{-| TODO: `Found` to show the most-recently found word at the top. This will require parsing the words
-from the response to a list, so the order is preserved (and fixing the server to return them in
-order.)
--}
 type WordListSortOrder
-    = Alpha
+    = Found
+    | Alpha
     | Length
 
 
 nextSortOrder : WordListSortOrder -> WordListSortOrder
 nextSortOrder order =
     case order of
+        Found ->
+            Alpha
+
         Alpha ->
             Length
 
         Length ->
-            Alpha
+            Found
 
 
 type alias WordEntry =
@@ -645,6 +645,9 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                         1
             in
             case sortOrder of
+                Found ->
+                    List.reverse
+
                 Alpha ->
                     List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word) )
 
@@ -710,6 +713,9 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
             , lightweightButton
                 -- TODO: chronological
                 (case sortOrder of
+                    Found ->
+                        "f↑"
+
                     Alpha ->
                         "a↑"
 
