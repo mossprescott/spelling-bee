@@ -94,10 +94,10 @@ Example response body:
         "outerLetters": ["a", "g", "l", "m", "r", "u",
         ]
     },
-    "found": {
-        "glom": ["jeff", "steve"],
-        "gloom": ["jeff"]
-    },
+    "found": [
+        ["gloom", ["jeff"]],
+        ["glom", ["jeff", "steve"]]
+    ],
     "hints": {
         "maxScore": 150
     },

@@ -588,7 +588,8 @@ nextSortOrder order =
 
 
 type alias WordEntry =
-    { foundByUser : Bool
+    { word : String
+    , foundByUser : Bool
     , friendInitials : List ( String, Color )
     }
 
@@ -597,13 +598,13 @@ type alias WordEntry =
 Each word may or may not be shown as found by the user, with zero or more
 decorations indicating which other users also found it.
 -}
-wordList : WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> Dict String WordEntry -> Bool -> Element msg
+wordList : WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
 wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
     let
-        render ( word, entry ) =
+        render entry =
             row [ spacing 5 ]
                 [ el
-                    ((if isPangram word then
+                    ((if isPangram entry.word then
                         [ Font.medium ]
 
                       else
@@ -616,7 +617,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                                 [ Font.color grayFgColor, Font.italic ]
                            )
                     )
-                    (text word)
+                    (text entry.word)
                 , row
                     [ spacing 2 ]
                     (List.map
@@ -645,15 +646,14 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
             in
             case sortOrder of
                 Alpha ->
-                    List.sortBy <| \( word, entry ) -> ( falseFirst entry.foundByUser, falseFirst (isPangram word) )
+                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word) )
 
                 Length ->
-                    List.sortBy <| \( word, entry ) -> ( falseFirst entry.foundByUser, -(String.length word) )
+                    List.sortBy <| \entry -> ( falseFirst entry.foundByUser, -(String.length entry.word) )
 
         wordPairs =
             Array.fromList <|
-                sortWords <|
-                    Dict.toList words
+                sortWords words
 
         ( col1, col2, col3 ) =
             splitWithMinimum minimumWordsPerColumn wordPairs
@@ -671,8 +671,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 found =
                     List.length <|
                         List.filter (\entry -> entry.foundByUser) <|
-                            Dict.values <|
-                                words
+                            words
 
                 totalMay =
                     if allKnown then

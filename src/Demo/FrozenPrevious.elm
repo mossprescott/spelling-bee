@@ -34,13 +34,12 @@ startModel =
                 , outerLetters = [ 'a', 'g', 'l', 'm', 'r', 'u' ]
                 }
             , found =
-                Dict.fromList
-                    [ ( "glom", [ "jeff", "steve" ] )
-                    , ( "gloom", [ "jeff" ] )
-                    , ( "moral", [ "steve" ] )
-                    , ( "amoral", [ "steve" ] )
-                    , ( "aglomural", [] )
-                    ]
+                [ ( "glom", [ "jeff", "steve" ] )
+                , ( "gloom", [ "jeff" ] )
+                , ( "moral", [ "steve" ] )
+                , ( "amoral", [ "steve" ] )
+                , ( "aglomural", [] )
+                ]
             , hints =
                 { maxScore = 150
                 }

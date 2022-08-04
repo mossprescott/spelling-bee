@@ -17,8 +17,8 @@ module Puzzle exposing
 
 import Dict exposing (Dict)
 import Http
-import Json.Decode as Decode exposing (Decoder, andThen, bool, dict, int, list, nullable, string)
-import Json.Decode.Pipeline exposing (hardcoded, optional, required)
+import Json.Decode as Decode exposing (Decoder, andThen, bool, dict, index, int, list, nullable, string)
+import Json.Decode.Pipeline exposing (custom, optional, required)
 import Json.Encode as Encode
 import Set
 
@@ -45,7 +45,9 @@ type alias PuzzleResponse =
     , nextPuzzleId : Maybe PuzzleId
     , previousPuzzleId : Maybe PuzzleId
     , puzzle : Puzzle
-    , found : Dict String (List User)
+
+    -- Note: (unique) words, in the order they were found.
+    , found : List ( String, List User )
     , hints : Hints
     , friends : Dict User UserInfo
     , group : GroupInfo
@@ -122,10 +124,10 @@ apparentScore user resp =
             else
                 0
 
-        go word users acc =
+        go ( word, users ) acc =
             acc + score word users
     in
-    Dict.foldl go 0 resp.found
+    List.foldl go 0 resp.found
 
 
 {-| Portion of the total score for a user (not the player), which is accounted for by words that
@@ -185,7 +187,7 @@ webBackend baseUrl =
                 |> required "nextPuzzleId" (nullable int)
                 |> required "previousPuzzleId" (nullable int)
                 |> required "puzzle" decodePuzzle
-                |> required "found" (dict (list string))
+                |> required "found" (list (pair string (list string)))
                 |> required "hints" decodeHints
                 |> required "friends" (dict decodeUserInfo)
                 |> required "co-op" decodeGroupInfo
@@ -219,6 +221,13 @@ webBackend baseUrl =
             Decode.succeed GroupInfo
                 |> required "score" int
                 |> required "hasAllPangrams" bool
+
+        -- Decode a 2-tuple from an array of (at least) two values. Any extra values are ignored.
+        pair : Decoder a -> Decoder b -> Decoder ( a, b )
+        pair decodeA decodeB =
+            Decode.succeed Tuple.pair
+                |> custom (index 0 decodeA)
+                |> custom (index 1 decodeB)
 
         char : Decoder Char
         char =

@@ -48,86 +48,74 @@ view model =
             [ wordList Alpha
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "foo", WordEntry True [] )
-                    ]
-                )
+                [ WordEntry "foo" True []
+                ]
                 False
             , wordList Alpha
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "foo", WordEntry True [] )
-                    , ( "bar", WordEntry False [ friend1, friend2 ] )
-                    ]
-                )
+                [ WordEntry "foo" True []
+                , WordEntry "bar" False [ friend1, friend2 ]
+                ]
                 True
             , wordList Alpha
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "foo", WordEntry True [] )
-                    , ( "bar", WordEntry True [] )
-                    , ( "baz", WordEntry True [] )
-                    ]
-                )
+                [ WordEntry "foo" True []
+                , WordEntry "bar" True []
+                , WordEntry "baz" True []
+                ]
                 False
             , wordList Alpha
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "foo", WordEntry True [] )
-                    , ( "bar", WordEntry True [] )
-                    , ( "baz", WordEntry True [] )
-                    , ( "quux", WordEntry True [] )
-                    , ( "schlamozzle", WordEntry True [] )
-                    ]
-                )
+                [ WordEntry "foo" True []
+                , WordEntry "bar" True []
+                , WordEntry "baz" True []
+                , WordEntry "quux" True []
+                , WordEntry "schlamozzle" True []
+                ]
                 False
             , wordList Alpha
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "foo", WordEntry True [] )
-                    , ( "bar", WordEntry True [] )
-                    , ( "baz", WordEntry True [] )
-                    , ( "quux", WordEntry True [] )
-                    , ( "schlamozzle", WordEntry True [] )
-                    , ( "nerp", WordEntry True [] )
-                    , ( "shazbot", WordEntry True [] )
-                    ]
-                )
+                [ WordEntry "foo" True []
+                , WordEntry "bar" True []
+                , WordEntry "baz" True []
+                , WordEntry "quux" True []
+                , WordEntry "schlamozzle" True []
+                , WordEntry "nerp" True []
+                , WordEntry "shazbot" True []
+                ]
                 False
             , el [ padding 10 ] none
             , wordList
                 model.dynamicSortOrder
                 Resort
                 3
-                (Dict.fromList
-                    [ ( "fool", WordEntry True [] )
-                    , ( "barb", WordEntry True [] )
-                    , ( "baze", WordEntry True [] )
-                    , ( "quux", WordEntry True [] )
-                    , ( "schlamozzle", WordEntry True [] )
-                    , ( "nerp", WordEntry True [] )
-                    , ( "shazbot", WordEntry True [] )
-                    , ( "flop", WordEntry True [] )
-                    , ( "barf", WordEntry True [] )
-                    , ( "calf", WordEntry True [] )
-                    , ( "calve", WordEntry True [] )
-                    , ( "shave", WordEntry True [] )
-                    , ( "quit", WordEntry True [] )
-                    , ( "quiz", WordEntry True [] )
-                    , ( "quizzing", WordEntry True [] )
-                    , ( "quizical", WordEntry True [] )
-                    , ( "call", WordEntry True [] )
-                    , ( "shall", WordEntry True [] )
-                    , ( "colt", WordEntry True [] )
-                    , ( "boll", WordEntry True [] )
-                    , ( "bolt", WordEntry True [] )
-                    , ( "nerf", WordEntry True [] )
-                    ]
-                )
+                [ WordEntry "fool" True []
+                , WordEntry "barb" True []
+                , WordEntry "baze" True []
+                , WordEntry "quux" True []
+                , WordEntry "schlamozzle" True []
+                , WordEntry "nerp" True []
+                , WordEntry "shazbot" True []
+                , WordEntry "flop" True []
+                , WordEntry "barf" True []
+                , WordEntry "calf" True []
+                , WordEntry "calve" True []
+                , WordEntry "shave" True []
+                , WordEntry "quit" True []
+                , WordEntry "quiz" True []
+                , WordEntry "quizzing" True []
+                , WordEntry "quizical" True []
+                , WordEntry "call" True []
+                , WordEntry "shall" True []
+                , WordEntry "colt" True []
+                , WordEntry "boll" True []
+                , WordEntry "bolt" True []
+                , WordEntry "nerf" True []
+                ]
                 False
             ]
         )

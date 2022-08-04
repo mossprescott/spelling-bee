@@ -302,10 +302,10 @@ tempLocalInsertFound : String -> PuzzleResponse -> PuzzleResponse
 tempLocalInsertFound word data =
     { data
         | found =
-            Dict.insert
-                word
-                (data.user |> Maybe.map List.singleton |> Maybe.withDefault [ "Guest" ])
-                data.found
+            ( word
+            , data.user |> Maybe.map List.singleton |> Maybe.withDefault [ "Guest" ]
+            )
+                :: data.found
     }
 
 
@@ -372,9 +372,10 @@ beeView model =
                             friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
 
                         foundMunged =
-                            Dict.map
-                                (\_ foundBy ->
+                            List.map
+                                (\( w, foundBy ) ->
                                     WordEntry
+                                        w
                                         (not <| List.isEmpty <| List.filter ((==) user) foundBy)
                                         (List.filterMap
                                             (\u -> Dict.get u colors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
@@ -401,7 +402,8 @@ beeView model =
 
                         -- TODO: consider only words for user; false if empty
                         localHasPangram =
-                            List.any isPangram <| Dict.keys data.found
+                            data.found
+                                |> List.any (isPangram << Tuple.first)
 
                         ( user, friends, groupInfo ) =
                             case data.user of
@@ -410,7 +412,8 @@ beeView model =
                                         localScore =
                                             case data.puzzle.expiration of
                                                 Just _ ->
-                                                    List.foldl ((+) << wordScore) 0 <| Dict.keys data.found
+                                                    data.found
+                                                        |> List.foldl ((+) << wordScore << Tuple.first) 0
 
                                                 Nothing ->
                                                     0
@@ -451,7 +454,7 @@ inputError model =
             if List.length model.input == 0 then
                 Just ""
 
-            else if Dict.member (String.fromList model.input) data.found then
+            else if List.any ((==) (String.fromList model.input) << Tuple.first) data.found then
                 Just "Already found"
 
             else if List.length model.input < 4 then
