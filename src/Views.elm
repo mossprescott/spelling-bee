@@ -268,11 +268,11 @@ hintNone =
 hintWarning : String -> Element msg
 hintWarning msg =
     el
-        [ Font.size 16
+        [ centerX
+        , height <| px 20
+        , Font.size 16
         , Font.light
         , Font.color grayFgColor
-        , centerX
-        , height <| px 20
         ]
         (text msg)
 
@@ -280,9 +280,10 @@ hintWarning msg =
 hintFound : WordEntry -> Element msg
 hintFound entry =
     row
-        [ Font.size 16
-        , centerX
+        [ centerX
         , height <| px 20
+        , Font.size 16
+        , Font.light
         , spacing 15
         ]
         [ text <| "+" ++ String.fromInt (wordScore entry.word)
