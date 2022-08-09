@@ -484,6 +484,9 @@ inputError model =
             if List.length model.input == 0 then
                 Just ""
 
+            else if List.any (\c -> c /= data.puzzle.centerLetter && not (List.member c data.puzzle.outerLetters)) model.input then
+                Just "Wrong letter"
+
             else if List.any ((==) (String.fromList model.input) << Tuple.first) data.found then
                 Just "Already found"
 
