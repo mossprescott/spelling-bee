@@ -284,10 +284,10 @@ hintFound entry =
         , height <| px 20
         , Font.size 16
         , Font.light
-        , spacing 15
+        , spacing 10
         ]
-        [ text <| "+" ++ String.fromInt (wordScore entry.word)
-        , word entry
+        [ word entry
+        , text <| "+" ++ String.fromInt (wordScore entry.word)
         ]
 
 
