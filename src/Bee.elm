@@ -200,7 +200,9 @@ update backend msg model =
                 Submit ->
                     case inputError model of
                         Just _ ->
-                            ( model, Cmd.none )
+                            ( { model | input = [] }
+                            , Cmd.none
+                            )
 
                         Nothing ->
                             ( model, backend.postWord ReceiveWord (String.fromList model.input) )
@@ -377,7 +379,7 @@ beeView model =
                                         ]
                                         [ controlButton "✗" "Delete" Delete (not <| List.isEmpty model.input)
                                         , controlButton "🤷" "Shuffle" Shuffle True
-                                        , controlButton "✓" "Submit" Submit (isNothing <| inputError model)
+                                        , controlButton "✓" "Submit" Submit (not <| List.isEmpty model.input)
                                         ]
                                 ]
 
