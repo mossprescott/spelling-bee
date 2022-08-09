@@ -50,9 +50,9 @@ startModel =
             , group = { score = 121, hasAllPangrams = False }
             }
     , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
-    , input = [ 'l', 'o', 'a', 'm' ]
+    , input = [ 'g', 'l', 'a', 'm' ]
     , selectedPuzzleId = Just 1234
-    , message = None
+    , message = Warning "Missing center letter"
     , wordSort = Found
     , viewport = Size 375 675
     }
