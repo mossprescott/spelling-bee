@@ -32,6 +32,7 @@ import Puzzle
         )
 import Random
 import Random.List exposing (shuffle)
+import Set
 import Task
 import Views
     exposing
@@ -484,20 +485,40 @@ inputError model =
             if List.length model.input == 0 then
                 Just ""
 
-            else if List.any (\c -> c /= data.puzzle.centerLetter && not (List.member c data.puzzle.outerLetters)) model.input then
-                Just "Wrong letter"
-
             else if List.any ((==) (String.fromList model.input) << Tuple.first) data.found then
                 Just "Already found"
 
-            else if List.length model.input < 4 then
-                Just "Too short"
-
-            else if List.all ((/=) data.puzzle.centerLetter) model.input then
-                Just "Missing center letter"
-
             else
-                Nothing
+                let
+                    wrong =
+                        Set.fromList <|
+                            List.filter (\c -> c /= data.puzzle.centerLetter && not (List.member c data.puzzle.outerLetters)) model.input
+                in
+                if Set.size wrong > 0 then
+                    let
+                        pluralized =
+                            if Set.size wrong == 1 then
+                                "Wrong letter"
+
+                            else
+                                "Wrong letters"
+
+                        wrongStr =
+                            wrong
+                                |> Set.toList
+                                |> List.intersperse ' '
+                                |> String.fromList
+                    in
+                    Just <| pluralized ++ ": " ++ wrongStr
+
+                else if List.length model.input < 4 then
+                    Just "Too short"
+
+                else if List.all ((/=) data.puzzle.centerLetter) model.input then
+                    Just "Missing center letter"
+
+                else
+                    Nothing
 
 
 isNothing : Maybe a -> Bool
