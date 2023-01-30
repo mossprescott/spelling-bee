@@ -11,7 +11,7 @@ import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
-import Dict exposing (Dict)
+import Dict
 import Element exposing (centerX)
 import Element.Font as Font
 import Html exposing (Html)
@@ -54,7 +54,7 @@ import Views
         , scoreBanner
         , wordList
         )
-import Views.Constants exposing (..)
+import Views.Constants as Constants exposing (ColorMode(..), bodyFont)
 
 
 
@@ -80,6 +80,7 @@ type alias Model =
     , message : Message
     , wordSort : WordListSortOrder
     , viewport : Size
+    , colorMode : ColorMode
     }
 
 
@@ -94,7 +95,7 @@ a medium-sized phone.
 -}
 startModel : Model
 startModel =
-    Model Nothing Array.empty [] Nothing None Alpha { width = 375, height = 675 }
+    Model Nothing Array.empty [] Nothing None Alpha { width = 375, height = 675 } Day
 
 
 init : PuzzleBackend Msg -> () -> ( Model, Cmd Msg )
@@ -332,14 +333,18 @@ beeView model =
                                 Nothing ->
                                     Element.none
 
+                        colors =
+                            Constants.themeColors model.colorMode
+
                         hdr =
                             puzzleHeader
+                                colors
                                 data.puzzle.displayDate
                                 (Maybe.map ShowPuzzle data.previousPuzzleId)
                                 (Maybe.map ShowPuzzle data.nextPuzzleId)
 
                         ftr =
-                            puzzleFooter data.puzzle.editor
+                            puzzleFooter colors data.puzzle.editor
 
                         gameView =
                             Element.column
@@ -349,28 +354,28 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner data.hints.maxScore (apparentScore user data) localHasPangram
+                                  scoreBanner colors data.hints.maxScore (apparentScore user data) localHasPangram
                                 , whenLatest <| entered Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
                                         None ->
                                             case inputError model of
                                                 Just str ->
-                                                    hintWarning str
+                                                    hintWarning colors str
 
                                                 Nothing ->
                                                     hintNone
 
                                         Warning msg ->
-                                            hintWarning msg
+                                            hintWarning colors msg
 
                                         JustFound word ->
                                             foundMunged
                                                 |> List.filter ((==) word << .word)
                                                 |> List.head
-                                                |> Maybe.map hintFound
+                                                |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive data.puzzle.centerLetter model.letters
+                                , hive colors data.puzzle.centerLetter model.letters
                                     |> Element.map Type
                                 , whenLatest <|
                                     Element.row
@@ -378,17 +383,17 @@ beeView model =
                                         , Element.spacing 25
                                         , Element.padding 10
                                         ]
-                                        [ controlButton "✗" "Delete" Delete (not <| List.isEmpty model.input)
-                                        , controlButton "🤷" "Shuffle" Shuffle True
-                                        , controlButton "✓" "Submit" Submit (not <| List.isEmpty model.input)
+                                        [ controlButton colors "✗" "Delete" Delete (not <| List.isEmpty model.input)
+                                        , controlButton colors "🤷" "Shuffle" Shuffle True
+                                        , controlButton colors "✓" "Submit" Submit (not <| List.isEmpty model.input)
                                         ]
                                 ]
 
                         wordsView =
-                            wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
+                            wordList colors model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
 
                         friendsView =
-                            friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
+                            friendList colors user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
 
                         foundMunged =
                             List.map
@@ -397,7 +402,7 @@ beeView model =
                                         w
                                         (not <| List.isEmpty <| List.filter ((==) user) foundBy)
                                         (List.filterMap
-                                            (\u -> Dict.get u colors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
+                                            (\u -> Dict.get u friendColors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
                                          <|
                                             List.sort foundBy
                                         )
@@ -407,13 +412,13 @@ beeView model =
                         -- Assign colors to just the friends that have logged words today. That
                         -- results in nicer choices of colors sometimes, and potentially
                         -- inconsistent choices from day to day if different people are playing.
-                        colors =
-                            assignColors <|
+                        friendColors =
+                            assignColors colors <|
                                 List.filter ((/=) user) <|
                                     Dict.keys friendsPlaying
 
                         friendToMeta =
-                            Dict.map (\u c -> ( c, unsharedScore u data )) colors
+                            Dict.map (\u c -> ( c, unsharedScore u data )) friendColors
 
                         friendsPlaying =
                             Dict.filter (\name info -> name == user || info.score > 0) <|

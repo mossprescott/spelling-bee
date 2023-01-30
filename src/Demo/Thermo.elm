@@ -6,6 +6,9 @@ module Demo.Thermo exposing (..)
 import Browser
 import Dict
 import Element
+import Element.Background as Background
+import Element.Font as Font
+import Element.Input exposing (button)
 import Html exposing (Html)
 import Puzzle exposing (UserInfo)
 import Views exposing (friendList, scoreBanner)
@@ -14,27 +17,49 @@ import Views.Constants exposing (..)
 
 main =
     Browser.sandbox
-        { init = ()
-        , update = always
-        , view = always view
+        { init = Day
+        , update = update
+        , view = view
         }
 
 
-view : Html ()
-view =
+type Msg
+    = SetColorMode ColorMode
+
+
+type alias Model =
+    ColorMode
+
+
+update : Msg -> Model -> Model
+update msg _ =
+    case msg of
+        SetColorMode mode ->
+            mode
+
+
+view : ColorMode -> Html Msg
+view mode =
+    let
+        colors =
+            themeColors mode
+    in
     Element.layout
-        []
+        [ Background.color colors.background
+        , Font.color colors.foreground
+        ]
         (Element.column
             [ Element.spacing 10
             , Element.padding 10
             ]
-            [ scoreBanner 100 0 False -- Beginner (0)
-            , scoreBanner 100 43 False -- Great
-            , scoreBanner 100 50 True -- Amazing
-            , scoreBanner 100 72 False -- Genius (+2)
-            , scoreBanner 100 100 True -- Queen Bee
+            [ scoreBanner colors 100 0 False -- Beginner (0)
+            , scoreBanner colors 100 43 False -- Great
+            , scoreBanner colors 100 50 True -- Amazing
+            , scoreBanner colors 100 72 False -- Genius (+2)
+            , scoreBanner colors 100 100 True -- Queen Bee
             , Element.el [ Element.padding 20 ] Element.none
             , friendList
+                colors
                 "Steve"
                 (Dict.fromList
                     [ ( "Steve", UserInfo 72 True )
@@ -43,12 +68,23 @@ view =
                     ]
                 )
                 (Dict.fromList
-                    [ ( "Dave", ( redColor, 0 ) )
-                    , ( "Jeff", ( purpleColor, 3 ) )
+                    [ ( "Dave", ( colors.friends 1, 0 ) )
+                    , ( "Jeff", ( colors.friends 0, 3 ) )
                     ]
                 )
                 100
                 87
                 False
+            , button [ Element.padding 20 ]
+                { onPress = Just <| SetColorMode <| rotate mode
+                , label =
+                    Element.text
+                        (if mode == Day then
+                            "☀"
+
+                         else
+                            "☾"
+                        )
+                }
             ]
         )

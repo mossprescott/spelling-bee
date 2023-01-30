@@ -3,11 +3,10 @@
 
 module Demo.Words exposing (..)
 
--- import Puzzle exposing (UserInfo)
-
 import Browser
-import Dict
 import Element exposing (column, el, none, padding, spacing)
+import Element.Background as Background
+import Element.Font as Font
 import Html exposing (Html)
 import Views exposing (WordEntry, WordListSortOrder(..), wordList)
 import Views.Constants exposing (..)
@@ -40,25 +39,30 @@ update msg model =
 view : Model -> Html Msg
 view model =
     Element.layout
-        []
+        [ Background.color colors.background
+        , Font.color colors.foreground
+        ]
         (column
             [ spacing 10
             , padding 10
             ]
-            [ wordList Alpha
+            [ wordList colors
+                Alpha
                 Resort
                 3
                 [ WordEntry "foo" True []
                 ]
                 False
-            , wordList Alpha
+            , wordList colors
+                Alpha
                 Resort
                 3
                 [ WordEntry "foo" True []
                 , WordEntry "bar" False [ friend1, friend2 ]
                 ]
                 True
-            , wordList Alpha
+            , wordList colors
+                Alpha
                 Resort
                 3
                 [ WordEntry "foo" True []
@@ -66,7 +70,8 @@ view model =
                 , WordEntry "baz" True []
                 ]
                 False
-            , wordList Alpha
+            , wordList colors
+                Alpha
                 Resort
                 3
                 [ WordEntry "foo" True []
@@ -76,7 +81,8 @@ view model =
                 , WordEntry "schlamozzle" True []
                 ]
                 False
-            , wordList Alpha
+            , wordList colors
+                Alpha
                 Resort
                 3
                 [ WordEntry "foo" True []
@@ -89,7 +95,7 @@ view model =
                 ]
                 False
             , el [ padding 10 ] none
-            , wordList
+            , wordList colors
                 model.dynamicSortOrder
                 Resort
                 3
@@ -121,9 +127,13 @@ view model =
         )
 
 
+colors =
+    themeColors Night
+
+
 friend1 =
-    ( "S", redColor )
+    ( "S", colors.friends 1 )
 
 
 friend2 =
-    ( "D", purpleColor )
+    ( "D", colors.friends 0 )
