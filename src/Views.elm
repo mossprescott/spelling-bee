@@ -808,7 +808,7 @@ smallThermoStyle filledColor =
     }
 
 
-{-| Bigger than th thermo label size, amsller than the names.
+{-| Bigger than the thermo label size, smaller than the names.
 -}
 friendScoreSize : Int
 friendScoreSize =
