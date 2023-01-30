@@ -1,5 +1,6 @@
-module Bee exposing
-    ( Message(..)
+port module Bee exposing
+    ( Flags
+    , Message(..)
     , Model
     , Msg
     , beeMain
@@ -11,8 +12,9 @@ import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
-import Dict exposing (Dict)
+import Dict
 import Element exposing (centerX)
+import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
 import Http
@@ -40,6 +42,7 @@ import Views
         , WordEntry
         , WordListSortOrder(..)
         , assignColors
+        , colorModeButton
         , controlButton
         , entered
         , friendList
@@ -54,7 +57,7 @@ import Views
         , scoreBanner
         , wordList
         )
-import Views.Constants exposing (..)
+import Views.Constants as Constants exposing (ColorMode(..), bodyFont)
 
 
 
@@ -62,7 +65,7 @@ import Views.Constants exposing (..)
 -- so you can "deep link" to a particular day.
 
 
-beeMain : PuzzleBackend Msg -> Program () Model Msg
+beeMain : PuzzleBackend Msg -> Program Flags Model Msg
 beeMain backend =
     Browser.element
         { init = init backend
@@ -70,6 +73,11 @@ beeMain backend =
         , update = update backend
         , view = beeView
         }
+
+
+type alias Flags =
+    { dark : Bool
+    }
 
 
 type alias Model =
@@ -80,6 +88,7 @@ type alias Model =
     , message : Message
     , wordSort : WordListSortOrder
     , viewport : Size
+    , colorMode : ColorMode
     }
 
 
@@ -92,14 +101,26 @@ type Message
 {-| At the start, we know nothing about any puzzle, and we assume a viewport size corresponding to
 a medium-sized phone.
 -}
-startModel : Model
-startModel =
-    Model Nothing Array.empty [] Nothing None Alpha { width = 375, height = 675 }
+startModel : Flags -> Model
+startModel flags =
+    Model Nothing
+        Array.empty
+        []
+        Nothing
+        None
+        Alpha
+        { width = 375, height = 675 }
+        (if flags.dark then
+            Night
+
+         else
+            Day
+        )
 
 
-init : PuzzleBackend Msg -> () -> ( Model, Cmd Msg )
-init backend flags_unused =
-    ( startModel
+init : PuzzleBackend Msg -> Flags -> ( Model, Cmd Msg )
+init backend flags =
+    ( startModel flags
     , Cmd.batch
         [ Task.perform (\vp -> ReceiveNewViewportSize { width = round vp.viewport.width, height = round vp.viewport.height }) Browser.Dom.getViewport
         , backend.getPuzzle Nothing ReceivePuzzle
@@ -116,6 +137,7 @@ type Msg
     | ResortWords WordListSortOrder
     | Submit
     | ShowPuzzle PuzzleId
+    | SetColorMode ColorMode
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
@@ -124,7 +146,18 @@ type Msg
 
 subscriptions : model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
+    Sub.batch
+        [ Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
+        , receiveIsDarkPort
+            (\dark ->
+                SetColorMode <|
+                    if dark then
+                        Night
+
+                    else
+                        Day
+            )
+        ]
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -216,6 +249,13 @@ update backend msg model =
                     , backend.getPuzzle (Just id) ReceivePuzzle
                     )
 
+                SetColorMode mode ->
+                    ( { model
+                        | colorMode = mode
+                      }
+                    , Cmd.none
+                    )
+
                 ReceivePuzzle (Result.Ok newData) ->
                     let
                         newLetters =
@@ -299,7 +339,11 @@ buttons than use an on-screen keyboard, even if there's a lot of space.
 -}
 initialFocusTask : Model -> Cmd Msg
 initialFocusTask model =
-    if model.viewport.width > 2 * desiredColumnWidth && model.viewport.height > 2 * desiredColumnWidth then
+    let
+        probablyDesktop =
+            model.viewport.width > 2 * desiredColumnWidth && model.viewport.height > 2 * desiredColumnWidth
+    in
+    if probablyDesktop then
         Task.attempt (\err -> NoOp (Debug.toString err)) (Browser.Dom.focus "input")
 
     else
@@ -320,6 +364,21 @@ tempLocalInsertFound word data =
 beeView : Model -> Html Msg
 beeView model =
     let
+        colors =
+            Constants.themeColors model.colorMode
+
+        modeButton =
+            colorModeButton colors model.colorMode SetColorMode
+
+        decorateHeader hdr =
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ hdr
+                , modeButton
+                ]
+
         body =
             case model.data of
                 Just data ->
@@ -334,12 +393,13 @@ beeView model =
 
                         hdr =
                             puzzleHeader
+                                colors
                                 data.puzzle.displayDate
                                 (Maybe.map ShowPuzzle data.previousPuzzleId)
                                 (Maybe.map ShowPuzzle data.nextPuzzleId)
 
                         ftr =
-                            puzzleFooter data.puzzle.editor
+                            puzzleFooter colors data.puzzle.editor
 
                         gameView =
                             Element.column
@@ -349,28 +409,28 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner data.hints.maxScore (apparentScore user data) localHasPangram
-                                , whenLatest <| entered Edit Submit Shuffle model.input
+                                  scoreBanner colors data.hints.maxScore (apparentScore user data) localHasPangram
+                                , whenLatest <| entered colors Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
                                         None ->
                                             case inputError model of
                                                 Just str ->
-                                                    hintWarning str
+                                                    hintWarning colors str
 
                                                 Nothing ->
                                                     hintNone
 
                                         Warning msg ->
-                                            hintWarning msg
+                                            hintWarning colors msg
 
                                         JustFound word ->
                                             foundMunged
                                                 |> List.filter ((==) word << .word)
                                                 |> List.head
-                                                |> Maybe.map hintFound
+                                                |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive data.puzzle.centerLetter model.letters
+                                , hive colors data.puzzle.centerLetter model.letters
                                     |> Element.map Type
                                 , whenLatest <|
                                     Element.row
@@ -378,17 +438,17 @@ beeView model =
                                         , Element.spacing 25
                                         , Element.padding 10
                                         ]
-                                        [ controlButton "✗" "Delete" Delete (not <| List.isEmpty model.input)
-                                        , controlButton "🤷" "Shuffle" Shuffle True
-                                        , controlButton "✓" "Submit" Submit (not <| List.isEmpty model.input)
+                                        [ controlButton colors "✗" "Delete" Delete (not <| List.isEmpty model.input)
+                                        , controlButton colors "🤷" "Shuffle" Shuffle True
+                                        , controlButton colors "✓" "Submit" Submit (not <| List.isEmpty model.input)
                                         ]
                                 ]
 
                         wordsView =
-                            wordList model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
+                            wordList colors model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
 
                         friendsView =
-                            friendList user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
+                            friendList colors user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
 
                         foundMunged =
                             List.map
@@ -397,7 +457,7 @@ beeView model =
                                         w
                                         (not <| List.isEmpty <| List.filter ((==) user) foundBy)
                                         (List.filterMap
-                                            (\u -> Dict.get u colors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
+                                            (\u -> Dict.get u friendColors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
                                          <|
                                             List.sort foundBy
                                         )
@@ -407,13 +467,13 @@ beeView model =
                         -- Assign colors to just the friends that have logged words today. That
                         -- results in nicer choices of colors sometimes, and potentially
                         -- inconsistent choices from day to day if different people are playing.
-                        colors =
-                            assignColors <|
+                        friendColors =
+                            assignColors colors <|
                                 List.filter ((/=) user) <|
                                     Dict.keys friendsPlaying
 
                         friendToMeta =
-                            Dict.map (\u c -> ( c, unsharedScore u data )) colors
+                            Dict.map (\u c -> ( c, unsharedScore u data )) friendColors
 
                         friendsPlaying =
                             Dict.filter (\name info -> name == user || info.score > 0) <|
@@ -445,7 +505,7 @@ beeView model =
                                 Just name ->
                                     ( name, data.friends, data.group )
                     in
-                    mainLayout hdr gameView wordsView friendsView ftr
+                    mainLayout (decorateHeader hdr) gameView wordsView friendsView ftr
 
                 Nothing ->
                     let
@@ -465,10 +525,13 @@ beeView model =
     Element.layout
         [ bodyFont
         , Font.size 16
+        , Background.color colors.background
+        , Font.color colors.foreground
         ]
         (body desiredColumnWidth model.viewport)
 
 
+desiredColumnWidth : Int
 desiredColumnWidth =
     300
 
@@ -521,11 +584,4 @@ inputError model =
                     Nothing
 
 
-isNothing : Maybe a -> Bool
-isNothing ma =
-    case ma of
-        Just _ ->
-            False
-
-        Nothing ->
-            True
+port receiveIsDarkPort : (Bool -> msg) -> Sub msg

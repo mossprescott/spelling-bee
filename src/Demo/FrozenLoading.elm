@@ -3,10 +3,8 @@
 
 module Demo.FrozenLoading exposing (..)
 
-import Array
-import Bee exposing (Model, Msg, beeView, startModel)
+import Bee exposing (Model, beeView, startModel)
 import Browser
-import Dict
 import Html exposing (Html)
 import Puzzle exposing (..)
 import Views exposing (WordListSortOrder(..))
@@ -23,7 +21,7 @@ main =
 
 model : Model
 model =
-    startModel
+    startModel { dark = True }
 
 
 view : () -> Html ()

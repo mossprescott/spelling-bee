@@ -3,6 +3,7 @@ module Views exposing
     , WordEntry
     , WordListSortOrder(..)
     , assignColors
+    , colorModeButton
     , controlButton
     , entered
     , friendList
@@ -68,7 +69,7 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
                     15
 
                  else
-                    0
+                    3
                 )
     in
     if actualViewport.width < desiredColumnWidth * 2 then
@@ -127,8 +128,21 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
             ]
 
 
-puzzleHeader : String -> Maybe msg -> Maybe msg -> Element msg
-puzzleHeader date previousMsg nextMsg =
+colorModeButton : Colors -> ColorMode -> (ColorMode -> msg) -> Element msg
+colorModeButton colors colorMode handle =
+    lightweightButton colors
+        (if colorMode == Day then
+            "☼"
+
+         else
+            "☾"
+        )
+        "Color Mode"
+        (Just <| handle <| Views.Constants.rotate colorMode)
+
+
+puzzleHeader : Colors -> String -> Maybe msg -> Maybe msg -> Element msg
+puzzleHeader colors date previousMsg nextMsg =
     column
         [ centerX
         ]
@@ -136,9 +150,9 @@ puzzleHeader date previousMsg nextMsg =
             [ spacing 10
             , Font.size 16
             ]
-            [ lightweightButton "←" "Previous Puzzle" previousMsg
+            [ lightweightButton colors "←" "Previous Puzzle" previousMsg
+            , lightweightButton colors "→" "Next Puzzle" nextMsg
             , el [] (text date)
-            , lightweightButton "→" "Next Puzzle" nextMsg
             ]
         ]
 
@@ -164,8 +178,8 @@ loadingHeader msg =
         ]
 
 
-puzzleFooter : String -> Element msg
-puzzleFooter editor =
+puzzleFooter : Colors -> String -> Element msg
+puzzleFooter colors editor =
     column
         [ centerX
         , spacing 5
@@ -184,7 +198,7 @@ puzzleFooter editor =
             , link
                 []
                 { url = "https://www.nytimes.com/puzzles/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color blueBgColor ] ] (text "New York Times")
+                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "New York Times")
                 }
             ]
         , el [] (text " ") -- space
@@ -196,7 +210,7 @@ puzzleFooter editor =
             , link
                 []
                 { url = "https://github.com/mossprescott/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color blueBgColor ] ] (text "here")
+                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "here")
                 }
             ]
         ]
@@ -204,8 +218,8 @@ puzzleFooter editor =
 
 {-| View with the score "thermo" along with the name of the highest level that's been reached.
 -}
-scoreBanner : Int -> Int -> Bool -> Element msg
-scoreBanner maxScore score hasPangram =
+scoreBanner : Colors -> Int -> Int -> Bool -> Element msg
+scoreBanner colors maxScore score hasPangram =
     column
         [ spacing 3
         , centerX
@@ -215,20 +229,21 @@ scoreBanner maxScore score hasPangram =
             , centerX
             ]
             (text <| scoreRating maxScore score)
-        , scoreThermo mainThermoStyle maxScore score hasPangram
+        , scoreThermo (mainThermoStyle colors) maxScore score hasPangram
         ]
 
 
 {-| Text area where letters appear (and can optionally be entered/editted directly.)
 -}
-entered : (String -> msg) -> msg -> msg -> List Char -> Element msg
-entered changedMsg enterMsg shuffleMsg chars =
+entered : Colors -> (String -> msg) -> msg -> msg -> List Char -> Element msg
+entered colors changedMsg enterMsg shuffleMsg chars =
     row
         [ centerX
         , onKeyStroke <| Dict.fromList [ ( "Enter", enterMsg ), ( " ", shuffleMsg ) ]
         ]
         [ Input.text
             [ Font.center
+            , Background.color colors.background
             , htmlAttribute (Html.Attributes.id "input")
             ]
             { text = String.fromList chars
@@ -265,20 +280,20 @@ hintNone =
         none
 
 
-hintWarning : String -> Element msg
-hintWarning msg =
+hintWarning : Colors -> String -> Element msg
+hintWarning colors msg =
     el
         [ centerX
         , height <| px 20
         , Font.size 16
         , Font.light
-        , Font.color grayFgColor
+        , Font.color colors.dimForeground
         ]
         (text msg)
 
 
-hintFound : WordEntry -> Element msg
-hintFound entry =
+hintFound : Colors -> WordEntry -> Element msg
+hintFound colors entry =
     row
         [ centerX
         , height <| px 20
@@ -286,22 +301,22 @@ hintFound entry =
         , Font.light
         , spacing 10
         ]
-        [ word entry
+        [ word colors entry
         , text <| "+" ++ String.fromInt (wordScore entry.word)
         ]
 
 
-hive : Char -> Array Char -> Element Char
-hive center letters =
+hive : Colors -> Char -> Array Char -> Element Char
+hive colors center letters =
     let
         cell letter =
             el
                 [ Background.color
                     (if letter == center then
-                        blueBgColor
+                        colors.primaryTint
 
                      else
-                        grayBgColor
+                        colors.secondaryTint
                     )
                 , Font.size 32
                 , Border.rounded 5
@@ -352,9 +367,11 @@ partition2 x y zs =
 
 {-| Actual HTML button, styled with a simple border, with a fixed width for consistent layout.
 -}
-controlButton : String -> String -> msg -> Bool -> Element msg
-controlButton label description msg enabled =
-    buttonImpl label
+controlButton : Colors -> String -> String -> msg -> Bool -> Element msg
+controlButton colors label description msg enabled =
+    buttonImpl
+        colors
+        label
         description
         (if enabled then
             Just msg
@@ -367,26 +384,26 @@ controlButton label description msg enabled =
 
 {-| HTML button, with similar style as the control buttons, but more compact.
 -}
-lightweightButton : String -> String -> Maybe msg -> Element msg
-lightweightButton label description msg =
-    buttonImpl label description msg Nothing
+lightweightButton : Colors -> String -> String -> Maybe msg -> Element msg
+lightweightButton colors label description msg =
+    buttonImpl colors label description msg Nothing
 
 
-buttonImpl : String -> String -> Maybe msg -> Maybe Int -> Element msg
-buttonImpl label description msg minWidth =
+buttonImpl : Colors -> String -> String -> Maybe msg -> Maybe Int -> Element msg
+buttonImpl colors label description msg minWidth =
     Input.button
         [ Border.rounded 5
-        , Border.color blueBgColor
+        , Border.color colors.activeHilite
         , Border.width 1
         , Border.solid
         , Font.light
         , Font.color
             (case msg of
                 Just _ ->
-                    rgb255 0 0 0
+                    colors.foreground
 
                 Nothing ->
-                    grayBgColor
+                    colors.inactiveForeground
             )
         , padding 5
         , width
@@ -415,8 +432,8 @@ type FriendEntry
     | Group Bool
 
 
-friendList : User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
-friendList user friends decorations maxScore groupScore groupHasAllPangrams =
+friendList : Colors -> User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
+friendList colors user friends decorations maxScore groupScore groupHasAllPangrams =
     let
         sortedFriends =
             friends
@@ -435,7 +452,7 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
 
                     -- Note: doesn't happen if inputs are correct.
                     Nothing ->
-                        Friend u grayBgColor 0 False
+                        Friend u colors.inactiveForeground 0 False
 
         userHasPangram : User -> Bool
         userHasPangram u =
@@ -469,7 +486,7 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
         -- Force alignment by matching the height of the thermo.
         centerTextCell contents =
             row
-                [ height (px <| 2 * (smallThermoStyle blueBgColor).bigRadius)
+                [ height (px <| 2 * (smallThermoStyle colors colors.primaryTint).bigRadius)
                 ]
                 [ contents ]
 
@@ -522,17 +539,17 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
                         \( entry, score ) ->
                             case entry of
                                 Player _ hasPangram ->
-                                    scoreThermo (smallThermoStyle blueBgColor) maxScore score hasPangram
+                                    scoreThermo (smallThermoStyle colors colors.primaryTint) maxScore score hasPangram
 
                                 Friend _ color _ hasPangram ->
                                     if score > 0 then
-                                        scoreThermo (smallThermoStyle color) maxScore score hasPangram
+                                        scoreThermo (smallThermoStyle colors color) maxScore score hasPangram
 
                                     else
                                         none
 
                                 Group hasAllPangrams ->
-                                    scoreThermo (smallThermoStyle blueBgColor) maxScore score hasAllPangrams
+                                    scoreThermo (smallThermoStyle colors colors.primaryTint) maxScore score hasAllPangrams
                   }
                 , { header = none
                   , width = shrink
@@ -569,8 +586,8 @@ friendList user friends decorations maxScore groupScore groupHasAllPangrams =
 {-| Select colors and initials for each user, spreading out the colors so that users with the same
 initial won't get the same color (unless there are a _lot_ of collisions, e.g. more than five Ms.)
 -}
-assignColors : List User -> Dict User Color
-assignColors users =
+assignColors : Colors -> List User -> Dict User Color
+assignColors colors users =
     let
         zipRolling xs ys =
             let
@@ -588,8 +605,11 @@ assignColors users =
             in
             loop xs ys
     in
-    Dict.fromList <|
-        zipRolling (List.sort users) friendColors
+    --zipRolling (List.sort users) colors.friends
+    users
+        |> List.sort
+        |> List.indexedMap (\x u -> ( u, colors.friends x ))
+        |> Dict.fromList
 
 
 type WordListSortOrder
@@ -622,8 +642,8 @@ type alias WordEntry =
 Each word may or may not be shown as found by the user, with zero or more
 decorations indicating which other users also found it.
 -}
-wordList : WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
-wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
+wordList : Colors -> WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
+wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
     let
         -- Sort words according to the preferred ordering. Note: the words are already alpha sorted in
         -- the Dict, and List.sort is stable, so these sorts are on top of that.
@@ -658,7 +678,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 [ spacing 2
                 , alignTop
                 ]
-                (List.map word <| Array.toList pairs)
+                (List.map (word colors) <| Array.toList pairs)
 
         -- E.g. "Found 1 word", "Found 0 of 32 words"
         foundMsg =
@@ -703,6 +723,7 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 ]
                 (text foundMsg)
             , lightweightButton
+                colors
                 -- TODO: chronological
                 (case sortOrder of
                     Found ->
@@ -729,8 +750,8 @@ wordList sortOrder resortMsg minimumWordsPerColumn words allKnown =
         ]
 
 
-word : WordEntry -> Element msg
-word entry =
+word : Colors -> WordEntry -> Element msg
+word colors entry =
     row [ spacing 5 ]
         [ el
             ((if isPangram entry.word then
@@ -743,7 +764,7 @@ word entry =
                         []
 
                     else
-                        [ Font.color grayFgColor, Font.italic ]
+                        [ Font.color colors.dimForeground, Font.italic ]
                    )
             )
             (text entry.word)
@@ -782,11 +803,11 @@ splitWithMinimum colMin xs =
     )
 
 
-mainThermoStyle : ThermoStyle
-mainThermoStyle =
-    { unfilled = grayBgColor
-    , filled = blueBgColor
-    , maxed = yellowColor
+mainThermoStyle : Colors -> ThermoStyle
+mainThermoStyle colors =
+    { unfilled = colors.secondaryTint
+    , filled = colors.primaryTint
+    , maxed = colors.queen
     , labelSize = 9
     , bigRadius = 10
     , smallRadius = 4
@@ -796,10 +817,14 @@ mainThermoStyle =
     }
 
 
-smallThermoStyle : Color -> ThermoStyle
-smallThermoStyle filledColor =
-    { mainThermoStyle
-        | filled = filledColor
+smallThermoStyle : Colors -> Color -> ThermoStyle
+smallThermoStyle colors foreground =
+    let
+        base =
+            mainThermoStyle colors
+    in
+    { base
+        | filled = foreground
         , bigRadius = 6
         , smallRadius = 2
         , connectorWidth = 2
@@ -808,7 +833,7 @@ smallThermoStyle filledColor =
     }
 
 
-{-| Bigger than th thermo label size, amsller than the names.
+{-| Bigger than the thermo label size, smaller than the names.
 -}
 friendScoreSize : Int
 friendScoreSize =
