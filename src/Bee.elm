@@ -1,5 +1,6 @@
-module Bee exposing
-    ( Message(..)
+port module Bee exposing
+    ( Flags
+    , Message(..)
     , Model
     , Msg
     , beeMain
@@ -64,7 +65,7 @@ import Views.Constants as Constants exposing (ColorMode(..), bodyFont)
 -- so you can "deep link" to a particular day.
 
 
-beeMain : PuzzleBackend Msg -> Program () Model Msg
+beeMain : PuzzleBackend Msg -> Program Flags Model Msg
 beeMain backend =
     Browser.element
         { init = init backend
@@ -72,6 +73,11 @@ beeMain backend =
         , update = update backend
         , view = beeView
         }
+
+
+type alias Flags =
+    { dark : Bool
+    }
 
 
 type alias Model =
@@ -95,14 +101,26 @@ type Message
 {-| At the start, we know nothing about any puzzle, and we assume a viewport size corresponding to
 a medium-sized phone.
 -}
-startModel : Model
-startModel =
-    Model Nothing Array.empty [] Nothing None Alpha { width = 375, height = 675 } Day
+startModel : Flags -> Model
+startModel flags =
+    Model Nothing
+        Array.empty
+        []
+        Nothing
+        None
+        Alpha
+        { width = 375, height = 675 }
+        (if flags.dark then
+            Night
+
+         else
+            Day
+        )
 
 
-init : PuzzleBackend Msg -> () -> ( Model, Cmd Msg )
-init backend flags_unused =
-    ( startModel
+init : PuzzleBackend Msg -> Flags -> ( Model, Cmd Msg )
+init backend flags =
+    ( startModel flags
     , Cmd.batch
         [ Task.perform (\vp -> ReceiveNewViewportSize { width = round vp.viewport.width, height = round vp.viewport.height }) Browser.Dom.getViewport
         , backend.getPuzzle Nothing ReceivePuzzle
@@ -128,7 +146,18 @@ type Msg
 
 subscriptions : model -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
+    Sub.batch
+        [ Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
+        , receiveIsDarkPort
+            (\dark ->
+                SetColorMode <|
+                    if dark then
+                        Night
+
+                    else
+                        Day
+            )
+        ]
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -502,6 +531,7 @@ beeView model =
         (body desiredColumnWidth model.viewport)
 
 
+desiredColumnWidth : Int
 desiredColumnWidth =
     300
 
@@ -554,11 +584,4 @@ inputError model =
                     Nothing
 
 
-isNothing : Maybe a -> Bool
-isNothing ma =
-    case ma of
-        Just _ ->
-            False
-
-        Nothing ->
-            True
+port receiveIsDarkPort : (Bool -> msg) -> Sub msg

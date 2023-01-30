@@ -12,7 +12,22 @@
 <body>
     <main></main>
     <script>
-      var app = Elm.Main.init({ node: document.querySelector('main') })
+      var isDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+      var entryPoint = Elm.Main || Elm.Demo.Local;
+
+      var app = entryPoint.init({
+        node: document.querySelector('main'),
+        flags: {
+          dark: isDark.matches
+        }
+      });
+
+      if (app.ports.receiveIsDarkPort !== undefined) {
+        isDark.addListener(() => {
+          app.ports.receiveIsDarkPort.send(isDark.matches);
+        });
+      }
     </script>
   </body>
 </html>
