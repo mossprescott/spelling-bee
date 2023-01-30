@@ -13,6 +13,7 @@ import Browser.Dom
 import Browser.Events
 import Dict
 import Element exposing (centerX)
+import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
 import Http
@@ -321,6 +322,9 @@ tempLocalInsertFound word data =
 beeView : Model -> Html Msg
 beeView model =
     let
+        colors =
+            Constants.themeColors model.colorMode
+
         body =
             case model.data of
                 Just data ->
@@ -332,9 +336,6 @@ beeView model =
 
                                 Nothing ->
                                     Element.none
-
-                        colors =
-                            Constants.themeColors model.colorMode
 
                         hdr =
                             puzzleHeader
@@ -470,6 +471,8 @@ beeView model =
     Element.layout
         [ bodyFont
         , Font.size 16
+        , Background.color colors.background
+        , Font.color colors.foreground
         ]
         (body desiredColumnWidth model.viewport)
 
