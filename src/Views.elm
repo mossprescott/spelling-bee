@@ -3,6 +3,7 @@ module Views exposing
     , WordEntry
     , WordListSortOrder(..)
     , assignColors
+    , colorModeButton
     , controlButton
     , entered
     , friendList
@@ -127,6 +128,19 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
             ]
 
 
+colorModeButton : Colors -> ColorMode -> (ColorMode -> msg) -> Element msg
+colorModeButton colors colorMode handle =
+    lightweightButton colors
+        (if colorMode == Day then
+            "☼"
+
+         else
+            "☾"
+        )
+        "Color Mode"
+        (Just <| handle <| Views.Constants.rotate colorMode)
+
+
 puzzleHeader : Colors -> String -> Maybe msg -> Maybe msg -> Element msg
 puzzleHeader colors date previousMsg nextMsg =
     column
@@ -137,8 +151,8 @@ puzzleHeader colors date previousMsg nextMsg =
             , Font.size 16
             ]
             [ lightweightButton colors "←" "Previous Puzzle" previousMsg
-            , el [] (text date)
             , lightweightButton colors "→" "Next Puzzle" nextMsg
+            , el [] (text date)
             ]
         ]
 

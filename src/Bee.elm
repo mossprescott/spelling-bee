@@ -41,6 +41,7 @@ import Views
         , WordEntry
         , WordListSortOrder(..)
         , assignColors
+        , colorModeButton
         , controlButton
         , entered
         , friendList
@@ -118,6 +119,7 @@ type Msg
     | ResortWords WordListSortOrder
     | Submit
     | ShowPuzzle PuzzleId
+    | SetColorMode ColorMode
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
@@ -216,6 +218,13 @@ update backend msg model =
                         , message = None
                       }
                     , backend.getPuzzle (Just id) ReceivePuzzle
+                    )
+
+                SetColorMode mode ->
+                    ( { model
+                        | colorMode = mode
+                      }
+                    , Cmd.none
                     )
 
                 ReceivePuzzle (Result.Ok newData) ->
