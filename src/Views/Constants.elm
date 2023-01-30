@@ -120,7 +120,7 @@ nightColors =
     , primaryTint = rgb255 47 143 191
 
     -- Light grey
-    , secondaryTint = rgb255 127 127 127
+    , secondaryTint = rgb255 63 63 63
 
     -- A little brighter for text:
     , dimForeground = rgb255 175 175 175
