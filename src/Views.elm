@@ -658,7 +658,20 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
             in
             case sortOrder of
                 Found ->
-                    List.reverse
+                    -- Tricky: preserve the order of the words the user has found, but reversed
+                    -- to put the latest first on screen. Follow them with any unfound words
+                    -- (when looking at a previous-day puzzle), sorted alphabetically.
+                    List.sortBy
+                        (\entry ->
+                            ( falseFirst entry.foundByUser
+                            , if entry.foundByUser then
+                                ""
+
+                              else
+                                entry.word
+                            )
+                        )
+                        << List.reverse
 
                 Alpha ->
                     List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word), entry.word )
