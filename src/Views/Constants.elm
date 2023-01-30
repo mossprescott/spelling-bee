@@ -126,7 +126,7 @@ nightColors =
     , dimForeground = rgb255 175 175 175
 
     -- Same as the regular background grey:
-    , inactiveForeground = rgb255 223 223 223
+    , inactiveForeground = rgb255 127 127 127
 
     -- Same as the primary tint color:
     , activeHilite = rgb255 47 143 191
