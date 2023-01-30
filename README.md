@@ -100,12 +100,13 @@ Example response body:
         ["glom", ["jeff", "steve"]]
     ],
     "hints": {
-        "maxScore": 150
+        "maxScore": 150,
+        "pangramCount": 1
     },
     "friends": {
-        "steve": { "hasPangram": true, "score": 120 },
-        "jeff": { "hasPangram": false, "score": 6 },
-        "dave": { "hasPangram": false, "score": 0 }
+        "steve": { "hasPangram": true, "score": 120, "hasAllPangrams": false },
+        "jeff": { "hasPangram": false, "score": 6, "hasAllPangrams": false },
+        "dave": { "hasPangram": false, "score": 0, "hasAllPangrams": false }
     },
     "co-op": {
         "hasAllPangrams": true,
