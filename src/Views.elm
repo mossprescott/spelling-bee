@@ -69,7 +69,7 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
                     15
 
                  else
-                    0
+                    3
                 )
     in
     if actualViewport.width < desiredColumnWidth * 2 then
