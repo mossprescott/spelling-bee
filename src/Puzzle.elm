@@ -71,12 +71,20 @@ type alias Puzzle =
 -}
 type alias Hints =
     { maxScore : Int
+    , pangramCount : Int
+
+    -- Possible: fourLetterWordCount, totalWordCount
     }
 
 
 type alias UserInfo =
     { score : Int
+
+    -- Has this user found at least one pangram?
     , hasPangram : Bool
+
+    -- Has this user found every pangram?
+    , hasAllPangrams : Bool
     }
 
 
@@ -85,6 +93,8 @@ Called "co-op" in JSON, but how do you spell that in camelCase?
 -}
 type alias GroupInfo =
     { score : Int
+
+    -- Has every pangram been found by at least one member of the group?
     , hasAllPangrams : Bool
     }
 
@@ -208,12 +218,14 @@ webBackend baseUrl =
         decodeHints =
             Decode.succeed Hints
                 |> required "maxScore" int
+                |> required "pangramCount" int
 
         decodeUserInfo : Decoder UserInfo
         decodeUserInfo =
             Decode.succeed UserInfo
                 |> required "score" int
                 |> required "hasPangram" bool
+                |> required "hasAllPangrams" bool
 
         decodeGroupInfo : Decoder GroupInfo
         decodeGroupInfo =

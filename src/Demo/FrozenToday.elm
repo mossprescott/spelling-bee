@@ -41,12 +41,13 @@ startModel =
                 ]
             , hints =
                 { maxScore = 150
+                , pangramCount = 2
                 }
             , friends =
                 Dict.fromList
-                    [ ( "steve", { score = 120, hasPangram = True } )
-                    , ( "jeff", { score = 6, hasPangram = False } )
-                    , ( "dave", { score = 0, hasPangram = False } )
+                    [ ( "steve", { score = 120, hasPangram = True, hasAllPangrams = True } )
+                    , ( "jeff", { score = 6, hasPangram = False, hasAllPangrams = False } )
+                    , ( "dave", { score = 0, hasPangram = False, hasAllPangrams = False } )
                     ]
             , group = { score = 121, hasAllPangrams = False }
             }

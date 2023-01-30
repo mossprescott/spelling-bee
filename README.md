@@ -27,8 +27,7 @@ get in touch and I can help you get started.
 
 Some things about the UI that might not be obvious:
 
-A player's score "bubble" is filled with a solid color if they have found a pangram (TODO: *all*
-the pangrams.)
+A player's score "bubble" is filled with a solid color if they have found all the pangrams.
 
 The number in the main, colored score bubble for the player is the score for all of the words
 found by the player so far. A number like "+7" in the grey bubble to the right of it is the number
@@ -60,8 +59,7 @@ is also shown on the right.
 
 The "Group" score bubble is filled if *every* pangram has been found by *someone* in the group.
 That is, on days when more than one pangram is available, the Group score bubble remains
-unfilled as long as there is a pangram that no one has found yet. Note: this is a clue; there
-would otherwise be no way to tell whether another pangram is available.
+unfilled as long as there is a pangram that no one has found yet.
 
 
 ## Backend
@@ -100,12 +98,13 @@ Example response body:
         ["glom", ["jeff", "steve"]]
     ],
     "hints": {
-        "maxScore": 150
+        "maxScore": 150,
+        "pangramCount": 1
     },
     "friends": {
-        "steve": { "hasPangram": true, "score": 120 },
-        "jeff": { "hasPangram": false, "score": 6 },
-        "dave": { "hasPangram": false, "score": 0 }
+        "steve": { "hasPangram": true, "score": 120, "hasAllPangrams": false },
+        "jeff": { "hasPangram": false, "score": 6, "hasAllPangrams": false },
+        "dave": { "hasPangram": false, "score": 0, "hasAllPangrams": false }
     },
     "co-op": {
         "hasAllPangrams": true,

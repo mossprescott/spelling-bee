@@ -219,7 +219,7 @@ puzzleFooter colors editor =
 {-| View with the score "thermo" along with the name of the highest level that's been reached.
 -}
 scoreBanner : Colors -> Int -> Int -> Bool -> Element msg
-scoreBanner colors maxScore score hasPangram =
+scoreBanner colors maxScore score hasAllPangrams =
     column
         [ spacing 3
         , centerX
@@ -229,7 +229,7 @@ scoreBanner colors maxScore score hasPangram =
             , centerX
             ]
             (text <| scoreRating maxScore score)
-        , scoreThermo (mainThermoStyle colors) maxScore score hasPangram
+        , scoreThermo (mainThermoStyle colors) maxScore score hasAllPangrams
         ]
 
 
@@ -443,22 +443,22 @@ friendList colors user friends decorations maxScore groupScore groupHasAllPangra
         toEntry : User -> FriendEntry
         toEntry u =
             if u == user then
-                Player user (userHasPangram user)
+                Player user (userHasAllPangrams user)
 
             else
                 case Dict.get u decorations of
                     Just ( color, extraScore ) ->
-                        Friend u color extraScore (userHasPangram u)
+                        Friend u color extraScore (userHasAllPangrams u)
 
                     -- Note: doesn't happen if inputs are correct.
                     Nothing ->
                         Friend u colors.inactiveForeground 0 False
 
-        userHasPangram : User -> Bool
-        userHasPangram u =
+        userHasAllPangrams : User -> Bool
+        userHasAllPangrams u =
             case Dict.get u friends of
                 Just info ->
-                    info.hasPangram
+                    info.hasAllPangrams
 
                 -- Note: doesn't happen if inputs are correct.
                 Nothing ->
@@ -538,12 +538,12 @@ friendList colors user friends decorations maxScore groupScore groupHasAllPangra
                   , view =
                         \( entry, score ) ->
                             case entry of
-                                Player _ hasPangram ->
-                                    scoreThermo (smallThermoStyle colors colors.primaryTint) maxScore score hasPangram
+                                Player _ hasAllPangrams ->
+                                    scoreThermo (smallThermoStyle colors colors.primaryTint) maxScore score hasAllPangrams
 
-                                Friend _ color _ hasPangram ->
+                                Friend _ color _ hasAllPangrams ->
                                     if score > 0 then
-                                        scoreThermo (smallThermoStyle colors color) maxScore score hasPangram
+                                        scoreThermo (smallThermoStyle colors color) maxScore score hasAllPangrams
 
                                     else
                                         none
@@ -658,7 +658,20 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
             in
             case sortOrder of
                 Found ->
-                    List.reverse
+                    -- Tricky: preserve the order of the words the user has found, but reversed
+                    -- to put the latest first on screen. Follow them with any unfound words
+                    -- (when looking at a previous-day puzzle), sorted alphabetically.
+                    List.sortBy
+                        (\entry ->
+                            ( falseFirst entry.foundByUser
+                            , if entry.foundByUser then
+                                ""
+
+                              else
+                                entry.word
+                            )
+                        )
+                        << List.reverse
 
                 Alpha ->
                     List.sortBy <| \entry -> ( falseFirst entry.foundByUser, falseFirst (isPangram entry.word), entry.word )
