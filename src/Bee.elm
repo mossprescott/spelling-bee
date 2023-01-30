@@ -338,6 +338,18 @@ beeView model =
         colors =
             Constants.themeColors model.colorMode
 
+        modeButton =
+            colorModeButton colors model.colorMode SetColorMode
+
+        decorateHeader hdr =
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ hdr
+                , modeButton
+                ]
+
         body =
             case model.data of
                 Just data ->
@@ -464,7 +476,7 @@ beeView model =
                                 Just name ->
                                     ( name, data.friends, data.group )
                     in
-                    mainLayout hdr gameView wordsView friendsView ftr
+                    mainLayout (decorateHeader hdr) gameView wordsView friendsView ftr
 
                 Nothing ->
                     let
