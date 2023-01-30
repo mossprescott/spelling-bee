@@ -9,6 +9,7 @@ import Demo.FrozenMain exposing (Msg, frozenMain)
 import Dict
 import Puzzle exposing (..)
 import Views exposing (Size, WordListSortOrder(..))
+import Views.Constants exposing (ColorMode(..))
 
 
 main : Program () Model Msg
@@ -57,4 +58,5 @@ startModel =
     , message = None
     , wordSort = Found
     , viewport = Size 375 675
+    , colorMode = Night
     }
