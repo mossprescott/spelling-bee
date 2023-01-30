@@ -43,20 +43,21 @@ startModel =
                 ]
             , hints =
                 { maxScore = 150
+                , pangramCount = 1
                 }
             , friends =
                 Dict.fromList
-                    [ ( "steve", { score = 120, hasPangram = True } )
-                    , ( "jeff", { score = 6, hasPangram = False } )
-                    , ( "dave", { score = 0, hasPangram = False } )
+                    [ ( "steve", { score = 120, hasPangram = True, hasAllPangrams = True } )
+                    , ( "jeff", { score = 6, hasPangram = True, hasAllPangrams = False } )
+                    , ( "dave", { score = 0, hasPangram = False, hasAllPangrams = False } )
                     ]
-            , group = { score = 121, hasAllPangrams = False }
+            , group = { score = 121, hasAllPangrams = True }
             }
     , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
     , input = [ 'l', 'o', 'a', 'm' ]
     , selectedPuzzleId = Just 1234
     , message = None
-    , wordSort = Found
+    , wordSort = Alpha
     , viewport = Size 375 675
     , colorMode = Night
     }
