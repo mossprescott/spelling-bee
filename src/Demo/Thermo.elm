@@ -62,9 +62,9 @@ view mode =
                 colors
                 "Steve"
                 (Dict.fromList
-                    [ ( "Steve", UserInfo 72 True )
-                    , ( "Dave", UserInfo 0 False )
-                    , ( "Jeff", UserInfo 57 True )
+                    [ ( "Steve", UserInfo 72 True True )
+                    , ( "Dave", UserInfo 0 False False )
+                    , ( "Jeff", UserInfo 57 True False )
                     ]
                 )
                 (Dict.fromList

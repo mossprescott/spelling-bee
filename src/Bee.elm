@@ -409,7 +409,7 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner colors data.hints.maxScore (apparentScore user data) localHasPangram
+                                  scoreBanner colors data.hints.maxScore (apparentScore user data) localHasAllPangrams
                                 , whenLatest <| entered colors Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
@@ -484,6 +484,12 @@ beeView model =
                             data.found
                                 |> List.any (isPangram << Tuple.first)
 
+                        localHasAllPangrams =
+                            data.found
+                                |> List.filter (isPangram << Tuple.first)
+                                |> List.length
+                                |> (==) data.hints.pangramCount
+
                         ( user, friends, groupInfo ) =
                             case data.user of
                                 Nothing ->
@@ -498,7 +504,7 @@ beeView model =
                                                     0
                                     in
                                     ( "Guest"
-                                    , Dict.insert "Guest" (UserInfo localScore localHasPangram) data.friends
+                                    , Dict.insert "Guest" (UserInfo localScore localHasPangram localHasAllPangrams) data.friends
                                     , GroupInfo localScore False
                                     )
 
