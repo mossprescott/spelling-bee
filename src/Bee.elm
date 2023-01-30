@@ -310,7 +310,11 @@ buttons than use an on-screen keyboard, even if there's a lot of space.
 -}
 initialFocusTask : Model -> Cmd Msg
 initialFocusTask model =
-    if model.viewport.width > 2 * desiredColumnWidth && model.viewport.height > 2 * desiredColumnWidth then
+    let
+        probablyDesktop =
+            model.viewport.width > 2 * desiredColumnWidth && model.viewport.height > 2 * desiredColumnWidth
+    in
+    if probablyDesktop then
         Task.attempt (\err -> NoOp (Debug.toString err)) (Browser.Dom.focus "input")
 
     else
