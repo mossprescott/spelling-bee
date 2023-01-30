@@ -221,14 +221,15 @@ scoreBanner colors maxScore score hasPangram =
 
 {-| Text area where letters appear (and can optionally be entered/editted directly.)
 -}
-entered : (String -> msg) -> msg -> msg -> List Char -> Element msg
-entered changedMsg enterMsg shuffleMsg chars =
+entered : Colors -> (String -> msg) -> msg -> msg -> List Char -> Element msg
+entered colors changedMsg enterMsg shuffleMsg chars =
     row
         [ centerX
         , onKeyStroke <| Dict.fromList [ ( "Enter", enterMsg ), ( " ", shuffleMsg ) ]
         ]
         [ Input.text
             [ Font.center
+            , Background.color colors.background
             , htmlAttribute (Html.Attributes.id "input")
             ]
             { text = String.fromList chars

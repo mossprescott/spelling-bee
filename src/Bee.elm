@@ -356,7 +356,7 @@ beeView model =
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
                                   scoreBanner colors data.hints.maxScore (apparentScore user data) localHasPangram
-                                , whenLatest <| entered Edit Submit Shuffle model.input
+                                , whenLatest <| entered colors Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
                                         None ->
