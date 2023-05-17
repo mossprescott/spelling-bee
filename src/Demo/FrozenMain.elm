@@ -10,7 +10,7 @@ import Browser.Events
 import Html exposing (Html)
 import Puzzle exposing (..)
 import Task
-import Views exposing (Size, WordListSortOrder(..))
+import Views exposing (Size)
 
 
 frozenMain : Model -> Program () Model Msg

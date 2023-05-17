@@ -10,6 +10,7 @@ import Element.Background as Background
 import Element.Font as Font
 import Element.Input exposing (button)
 import Html exposing (Html)
+import Language exposing (Language(..), stringsFor)
 import Puzzle exposing (UserInfo)
 import Views exposing (friendList, scoreBanner)
 import Views.Constants exposing (..)
@@ -43,6 +44,9 @@ view mode =
     let
         colors =
             themeColors mode
+
+        strings =
+            stringsFor EN
     in
     Element.layout
         [ Background.color colors.background
@@ -52,14 +56,15 @@ view mode =
             [ Element.spacing 10
             , Element.padding 10
             ]
-            [ scoreBanner colors 100 0 False -- Beginner (0)
-            , scoreBanner colors 100 43 False -- Great
-            , scoreBanner colors 100 50 True -- Amazing
-            , scoreBanner colors 100 72 False -- Genius (+2)
-            , scoreBanner colors 100 100 True -- Queen Bee
+            [ scoreBanner colors strings 100 0 False -- Beginner (0)
+            , scoreBanner colors strings 100 43 False -- Great
+            , scoreBanner colors strings 100 50 True -- Amazing
+            , scoreBanner colors strings 100 72 False -- Genius (+2)
+            , scoreBanner colors strings 100 100 True -- Queen Bee
             , Element.el [ Element.padding 20 ] Element.none
             , friendList
                 colors
+                strings
                 "Steve"
                 (Dict.fromList
                     [ ( "Steve", UserInfo 72 True True )

@@ -5,6 +5,7 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Views.Constants exposing (ScoreLevel(..))
 
 
 type alias ThermoStyle =
@@ -47,25 +48,25 @@ scoreThermo style maxScore score hasBonus =
 {-| Score level thresholds, painstakingly reverse-engineered. Note: Queen Bee doesn't appear in
 thermos (until you actually achieve it), to encourage a sense of accomplishment at Genius level.
 -}
-thresholds : Array ( String, Float )
+thresholds : Array ( ScoreLevel, Float )
 thresholds =
     Array.fromList
-        [ ( "Beginner", 0.0 )
-        , ( "Good Start", 0.02 )
-        , ( "Moving Up", 0.05 )
-        , ( "Good", 0.08 )
-        , ( "Solid", 0.15 )
-        , ( "Nice", 0.25 )
-        , ( "Great", 0.4 )
-        , ( "Amazing", 0.5 )
-        , ( "Genius", 0.7 )
-        , ( "Queen Bee", 1.0 )
+        [ ( ScoreLevel0, 0.0 )
+        , ( ScoreLevel1, 0.02 )
+        , ( ScoreLevel2, 0.05 )
+        , ( ScoreLevel3, 0.08 )
+        , ( ScoreLevel4, 0.15 )
+        , ( ScoreLevel5, 0.25 )
+        , ( ScoreLevel6, 0.4 )
+        , ( ScoreLevel7, 0.5 )
+        , ( ScoreLevel8, 0.7 )
+        , ( ScoreLevel9, 1.0 )
         ]
 
 
-scoreRating : Int -> Int -> String
+scoreRating : Int -> Int -> ScoreLevel
 scoreRating maxScore score =
-    Maybe.withDefault "" <|
+    Maybe.withDefault ScoreLevel0 <|
         List.head <|
             List.reverse <|
                 List.filterMap

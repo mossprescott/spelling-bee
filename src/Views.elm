@@ -1,7 +1,6 @@
 module Views exposing
     ( Size
     , WordEntry
-    , WordListSortOrder(..)
     , assignColors
     , colorModeButton
     , controlButton
@@ -11,6 +10,7 @@ module Views exposing
     , hintNone
     , hintWarning
     , hive
+    , languageButton
     , loadingHeader
     , mainLayout
     , puzzleFooter
@@ -31,6 +31,7 @@ import Element.Region as Region
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
+import Language exposing (Language(..), Strings)
 import Puzzle exposing (User, UserInfo, isPangram, wordScore)
 import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
@@ -141,6 +142,20 @@ colorModeButton colors colorMode handle =
         (Just <| handle <| Views.Constants.rotate colorMode)
 
 
+languageButton : Colors -> Language -> (Language -> msg) -> Element msg
+languageButton colors language handle =
+    lightweightButton colors
+        (case language of
+            EN ->
+                "🇺🇸"
+
+            ES ->
+                "🇲🇽"
+        )
+        "Language"
+        (Just <| handle <| Language.rotate language)
+
+
 puzzleHeader : Colors -> String -> Maybe msg -> Maybe msg -> Element msg
 puzzleHeader colors date previousMsg nextMsg =
     column
@@ -218,8 +233,8 @@ puzzleFooter colors editor =
 
 {-| View with the score "thermo" along with the name of the highest level that's been reached.
 -}
-scoreBanner : Colors -> Int -> Int -> Bool -> Element msg
-scoreBanner colors maxScore score hasAllPangrams =
+scoreBanner : Colors -> Strings -> Int -> Int -> Bool -> Element msg
+scoreBanner colors strings maxScore score hasAllPangrams =
     column
         [ spacing 3
         , centerX
@@ -228,7 +243,7 @@ scoreBanner colors maxScore score hasAllPangrams =
             [ Font.size 16
             , centerX
             ]
-            (text <| scoreRating maxScore score)
+            (text <| strings.scoreLabel <| scoreRating maxScore score)
         , scoreThermo (mainThermoStyle colors) maxScore score hasAllPangrams
         ]
 
@@ -432,8 +447,8 @@ type FriendEntry
     | Group Bool
 
 
-friendList : Colors -> User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
-friendList colors user friends decorations maxScore groupScore groupHasAllPangrams =
+friendList : Colors -> Strings -> User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
+friendList colors strings user friends decorations maxScore groupScore groupHasAllPangrams =
     let
         sortedFriends =
             friends
@@ -504,7 +519,7 @@ friendList colors user friends decorations maxScore groupScore groupHasAllPangra
     column
         [ spacing 10
         ]
-        [ text "Friends"
+        [ text <| strings.friendsLabel
         , Element.table
             [ width fill
             , spacing 9
@@ -612,25 +627,6 @@ assignColors colors users =
         |> Dict.fromList
 
 
-type WordListSortOrder
-    = Found
-    | Alpha
-    | Length
-
-
-nextSortOrder : WordListSortOrder -> WordListSortOrder
-nextSortOrder order =
-    case order of
-        Found ->
-            Alpha
-
-        Alpha ->
-            Length
-
-        Length ->
-            Found
-
-
 type alias WordEntry =
     { word : String
     , foundByUser : Bool
@@ -642,8 +638,8 @@ type alias WordEntry =
 Each word may or may not be shown as found by the user, with zero or more
 decorations indicating which other users also found it.
 -}
-wordList : Colors -> WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
-wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
+wordList : Colors -> Strings -> WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
+wordList colors strings sortOrder resortMsg minimumWordsPerColumn words allKnown =
     let
         -- Sort words according to the preferred ordering. Note: the words are already alpha sorted in
         -- the Dict, and List.sort is stable, so these sorts are on top of that.
@@ -708,23 +704,21 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
                     else
                         Nothing
 
-                numMsg =
-                    case ( found, totalMay ) of
-                        ( x, Just y ) ->
-                            String.fromInt x ++ " of " ++ String.fromInt y
-
-                        ( x, Nothing ) ->
-                            String.fromInt x
-
-                wordsStr =
-                    case Maybe.withDefault found totalMay of
-                        1 ->
-                            "word"
-
-                        _ ->
-                            "words"
+                -- numMsg =
+                --     case ( found, totalMay ) of
+                --         ( x, Just y ) ->
+                --             String.fromInt x ++ " of " ++ String.fromInt y
+                --         ( x, Nothing ) ->
+                --             String.fromInt x
+                -- wordsStr =
+                --     case Maybe.withDefault found totalMay of
+                --         1 ->
+                --             "word"
+                --         _ ->
+                --             "words"
             in
-            "Found " ++ numMsg ++ " " ++ wordsStr
+            -- "Found " ++ numMsg ++ " " ++ wordsStr
+            strings.foundLabel found totalMay
     in
     column
         [ spacing 5
@@ -737,18 +731,8 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 (text foundMsg)
             , lightweightButton
                 colors
-                -- TODO: chronological
-                (case sortOrder of
-                    Found ->
-                        "f↑"
-
-                    Alpha ->
-                        "a↑"
-
-                    Length ->
-                        "l↑"
-                )
-                "Sort Words"
+                (strings.sortLabel sortOrder)
+                strings.sortDescription
                 (Just <| resortMsg <| nextSortOrder sortOrder)
             ]
         , row

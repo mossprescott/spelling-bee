@@ -8,7 +8,8 @@ import Element exposing (column, el, none, padding, spacing)
 import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
-import Views exposing (WordEntry, WordListSortOrder(..), wordList)
+import Language exposing (Language(..), stringsFor)
+import Views exposing (WordEntry, wordList)
 import Views.Constants exposing (..)
 
 
@@ -47,6 +48,7 @@ view model =
             , padding 10
             ]
             [ wordList colors
+                strings
                 Alpha
                 Resort
                 3
@@ -54,6 +56,7 @@ view model =
                 ]
                 False
             , wordList colors
+                strings
                 Alpha
                 Resort
                 3
@@ -62,6 +65,7 @@ view model =
                 ]
                 True
             , wordList colors
+                strings
                 Alpha
                 Resort
                 3
@@ -71,6 +75,7 @@ view model =
                 ]
                 False
             , wordList colors
+                strings
                 Alpha
                 Resort
                 3
@@ -82,6 +87,7 @@ view model =
                 ]
                 False
             , wordList colors
+                strings
                 Alpha
                 Resort
                 3
@@ -96,6 +102,7 @@ view model =
                 False
             , el [ padding 10 ] none
             , wordList colors
+                strings
                 model.dynamicSortOrder
                 Resort
                 3
@@ -129,6 +136,10 @@ view model =
 
 colors =
     themeColors Night
+
+
+strings =
+    stringsFor EN
 
 
 friend1 =
