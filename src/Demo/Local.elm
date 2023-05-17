@@ -1,6 +1,6 @@
 module Demo.Local exposing (..)
 
-import Bee exposing (Flags, Model, Msg, beeMain)
+import Bee exposing (Model, Msg, beeMain)
 import Puzzle exposing (herokuBaseUrl, webBackend)
 
 
@@ -10,6 +10,6 @@ Note: there's no easy way to get this to connect as an authenticated user, so yo
 to test "Guest" mode.
 
 -}
-main : Program Flags Model Msg
+main : Program () Model Msg
 main =
-    beeMain <| webBackend herokuBaseUrl
+    beeMain (always { dark = False }) <| webBackend herokuBaseUrl

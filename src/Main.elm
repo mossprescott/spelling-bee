@@ -6,4 +6,4 @@ import Puzzle exposing (relativeBaseUrl, webBackend)
 
 main : Program Flags Model Msg
 main =
-    beeMain <| webBackend relativeBaseUrl
+    beeMain identity <| webBackend relativeBaseUrl

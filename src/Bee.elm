@@ -65,10 +65,10 @@ import Views.Constants as Constants exposing (ColorMode(..), bodyFont)
 -- so you can "deep link" to a particular day.
 
 
-beeMain : PuzzleBackend Msg -> Program Flags Model Msg
-beeMain backend =
+beeMain : (flags -> Flags) -> PuzzleBackend Msg -> Program flags Model Msg
+beeMain decodeFlags backend =
     Browser.element
-        { init = init backend
+        { init = init backend << decodeFlags
         , subscriptions = subscriptions
         , update = update backend
         , view = beeView
