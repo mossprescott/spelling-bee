@@ -33,6 +33,7 @@ import Html.Events
 import Json.Decode as Decode
 import Language exposing (Language(..), Strings)
 import Puzzle exposing (User, UserInfo, isPangram, wordScore)
+import Set exposing (Set)
 import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
 
@@ -325,25 +326,37 @@ hintFound colors entry =
         ]
 
 
-hive : Colors -> Char -> Array Char -> Element Char
-hive colors center letters =
+hive : Colors -> Char -> Array Char -> Set Char -> Element Char
+hive colors center letters used =
     let
+        accentColor letter =
+            if letter == center && not (Set.member letter used) then
+                colors.primaryTint
+
+            else
+                colors.secondaryTint
+
+        accentAttrs letter =
+            if Set.member letter used then
+                [ Border.solid
+                , Border.color <| accentColor letter
+                , Border.width 3
+                ]
+
+            else
+                [ Background.color <| accentColor letter ]
+
         cell letter =
             el
-                [ Background.color
-                    (if letter == center then
-                        colors.primaryTint
-
-                     else
-                        colors.secondaryTint
-                    )
-                , Font.size 32
-                , Border.rounded 5
-                , width (px 60)
-                , height (px 60)
-                , pointer
-                , onClick letter
-                ]
+                (accentAttrs letter
+                    ++ [ Font.size 32
+                       , Border.rounded 5
+                       , width (px 60)
+                       , height (px 60)
+                       , pointer
+                       , onClick letter
+                       ]
+                )
                 (el [ centerX, centerY ]
                     (text (String.fromChar letter))
                 )

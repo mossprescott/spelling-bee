@@ -456,7 +456,7 @@ beeView model =
                                                 |> List.head
                                                 |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive colors data.puzzle.centerLetter model.letters
+                                , hive colors data.puzzle.centerLetter model.letters (Set.fromList model.input)
                                     |> Element.map Type
                                 , whenLatest <|
                                     Element.row
