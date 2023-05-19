@@ -322,10 +322,14 @@ update backend msg model =
                             )
 
                 ReceiveWord (Result.Err err) ->
+                    -- Note: if an error happens here, the word passed local validation,
+                    -- so we assume that it's just not part of the solution. However, if
+                    -- something goes wrong on the server or network it gets trapped here,
+                    -- and a couple of times that's been pretty confusing.
                     ( Debug.log (Debug.toString err)
                         { model
                             | input = []
-                            , message = Warning "Not in word list"
+                            , message = Warning strings.notInWordListMessage
                         }
                     , Cmd.none
                     )
