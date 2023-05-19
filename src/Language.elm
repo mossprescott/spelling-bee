@@ -5,7 +5,6 @@ module Language exposing
     , stringsFor
     )
 
-import Array
 import Views.Constants exposing (ScoreLevel(..), WordListSortOrder(..))
 
 
@@ -50,25 +49,10 @@ enStrings =
             , "Queen Bee"
             ]
     , foundLabel =
-        \found totalMay ->
-            let
-                numMsg =
-                    case ( found, totalMay ) of
-                        ( x, Just y ) ->
-                            String.fromInt x ++ " of " ++ String.fromInt y
-
-                        ( x, Nothing ) ->
-                            String.fromInt x
-
-                wordsStr =
-                    case Maybe.withDefault found totalMay of
-                        1 ->
-                            "word"
-
-                        _ ->
-                            "words"
-            in
-            "Found " ++ numMsg ++ " " ++ wordsStr
+        foundLabels
+            "Found 1 word"
+            (\m -> "Found " ++ m ++ " words")
+            (\m n -> "Found " ++ m ++ " of " ++ n ++ " words")
     , sortLabel =
         \order ->
             case order of
@@ -102,25 +86,10 @@ esStrings =
             , "Abeja Reina"
             ]
     , foundLabel =
-        \found totalMay ->
-            let
-                numMsg =
-                    case ( found, totalMay ) of
-                        ( x, Just y ) ->
-                            String.fromInt x ++ " de " ++ String.fromInt y
-
-                        ( x, Nothing ) ->
-                            String.fromInt x
-
-                wordsStr =
-                    case Maybe.withDefault found totalMay of
-                        1 ->
-                            "palabra"
-
-                        _ ->
-                            "palabras"
-            in
-            "Encontraste " ++ numMsg ++ " " ++ wordsStr
+        foundLabels
+            "Encontraste 1 palabra"
+            (\m -> "Encontraste " ++ m ++ " palabras")
+            (\m n -> "Encontraste " ++ m ++ " de " ++ n ++ " palabras")
     , sortLabel =
         \order ->
             case order of
@@ -170,3 +139,28 @@ scoreLabels beginnerStr strs =
                 )
             |> List.head
             |> Maybe.withDefault beginnerStr
+
+
+{-| Cases:
+
+  - Found 1 word
+  - Found n words
+  - Found n of m words
+
+-}
+foundLabels :
+    String
+    -> (String -> String)
+    -> (String -> String -> String)
+    -> (Int -> Maybe Int -> String)
+foundLabels oneWord words ofTotal =
+    \found totalMay ->
+        case ( found, totalMay ) of
+            ( 1, Nothing ) ->
+                oneWord
+
+            ( _, Nothing ) ->
+                words (String.fromInt found)
+
+            ( _, Just total ) ->
+                ofTotal (String.fromInt found) (String.fromInt total)
