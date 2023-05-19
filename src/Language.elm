@@ -5,6 +5,7 @@ module Language exposing
     , stringsFor
     )
 
+import Set exposing (Set)
 import Views.Constants exposing (ScoreLevel(..), WordListSortOrder(..))
 
 
@@ -23,19 +24,63 @@ rotate language =
             EN
 
 
+{-| A record containing all explicit Strings which the user can encounter while playing the game,
+with the following exceptions:
+
+  - symbols and emoji, which are "universal" by design
+  - error messages that arise from programming errors or unexpected backend problems
+  - strings that are embedded in the puzzle from the source (e.g. the puzzle's date)
+
+-}
 type alias Strings =
-    { scoreLabel : ScoreLevel -> String
+    { -- Header stuff:
+      titleLabel : String
+    , loadingLabel : String
+    , editorLabel : String -> String
+    , attributionLabel : String
+    , nytLabel : String
+    , sourceLabel : String
+    , hereLabel : String
+
+    -- Puzzle controls:
+    , scoreLabel : ScoreLevel -> String
     , foundLabel : Int -> Maybe Int -> String
     , sortLabel : WordListSortOrder -> String
-    , sortDescription : String
     , friendsLabel : String
+    , groupLabel : String
     , guestLabel : String
+
+    -- Error messages:
+    , alreadyFoundMessage : String
+    , wrongLettersMessage : Set Char -> String
+    , tooShortMessage : String
+    , missingCenterLetterMessage : String
+    , notInWordListMessage : String
+
+    -- Accessibility labels:
+    , previousPuzzleDescription : String
+    , nextPuzzleDescription : String
+    , colorModeDescription : String
+    , languageDescription : String
+    , sortDescription : String
+    , deleteDescription : String
+    , shuffleDescription : String
+    , submitDescription : String
     }
 
 
 enStrings : Strings
 enStrings =
-    { scoreLabel =
+    { titleLabel = "Spelling Bee"
+    , loadingLabel = "loading…"
+    , editorLabel = \ed -> "Puzzle by " ++ ed
+    , attributionLabel = "for the "
+    , nytLabel = "New York Times"
+    , sourceLabel = "Source and docs "
+    , hereLabel = "here"
+
+    -- Puzzle controls:
+    , scoreLabel =
         scoreLabels
             "Beginner"
             [ "Good Start"
@@ -64,15 +109,44 @@ enStrings =
 
                 Length ->
                     "l↑"
-    , sortDescription = "Sort Order"
     , friendsLabel = "Friends"
+    , groupLabel = "Group"
     , guestLabel = "Guest"
+
+    -- Error messages:
+    , alreadyFoundMessage = "Already Found"
+    , wrongLettersMessage =
+        wrongLettersMessage
+            (\ls -> "Wrong letter: " ++ ls)
+            (\ls -> "Wrong letters: " ++ ls)
+    , tooShortMessage = "Too short"
+    , missingCenterLetterMessage = "Missing center letter"
+    , notInWordListMessage = "Not in word list"
+
+    -- Accessibility:
+    , previousPuzzleDescription = "Previous Puzzle"
+    , nextPuzzleDescription = "Next Puzzle"
+    , colorModeDescription = "Color Mode"
+    , languageDescription = "Language"
+    , sortDescription = "Sort Order"
+    , deleteDescription = "Delete"
+    , shuffleDescription = "Shuffle"
+    , submitDescription = "Submit"
     }
 
 
 esStrings : Strings
 esStrings =
-    { scoreLabel =
+    { titleLabel = "<<Spelling Bee>>"
+    , loadingLabel = "<<loading…>>"
+    , editorLabel = \ed -> "<<Puzzle by>> " ++ ed
+    , attributionLabel = "<<for the>> "
+    , nytLabel = "New York Times"
+    , sourceLabel = "<<Source and docs>> "
+    , hereLabel = "aqui"
+
+    -- Puzzle controls:
+    , scoreLabel =
         scoreLabels
             "Principiante"
             [ "Buen Comienzo"
@@ -101,9 +175,29 @@ esStrings =
 
                 Length ->
                     "l↑"
-    , sortDescription = "Orden de Clasificación"
     , friendsLabel = "Amigos"
+    , groupLabel = "<<Group>>"
     , guestLabel = "Visitante"
+
+    -- Error messages:
+    , alreadyFoundMessage = "<<Already Found>>"
+    , wrongLettersMessage =
+        wrongLettersMessage
+            (\ls -> "<<Wrong letter>>: " ++ ls)
+            (\ls -> "<<Wrong letters>>: " ++ ls)
+    , tooShortMessage = "<<Too short>>"
+    , missingCenterLetterMessage = "<<Missing center letter>>"
+    , notInWordListMessage = "<<Not in word list>>"
+
+    -- Accessibility:
+    , previousPuzzleDescription = "<<Previous Puzzle>>"
+    , nextPuzzleDescription = "<<Next Puzzle>>"
+    , colorModeDescription = "<<Color Mode>>"
+    , languageDescription = "<<Language>>"
+    , sortDescription = "Orden de Clasificación"
+    , deleteDescription = "<<Delete>>"
+    , shuffleDescription = "<<Shuffle>>"
+    , submitDescription = "<<Submit>>"
     }
 
 
@@ -164,3 +258,22 @@ foundLabels oneWord words ofTotal =
 
             ( _, Just total ) ->
                 ofTotal (String.fromInt found) (String.fromInt total)
+
+
+wrongLettersMessage :
+    (String -> String)
+    -> (String -> String)
+    -> (Set Char -> String)
+wrongLettersMessage oneLetter letters wrong =
+    let
+        wrongStr =
+            wrong
+                |> Set.toList
+                |> List.intersperse ' '
+                |> String.fromList
+    in
+    if Set.size wrong == 1 then
+        oneLetter wrongStr
+
+    else
+        letters wrongStr

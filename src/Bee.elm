@@ -390,17 +390,14 @@ beeView model =
         strings =
             Language.stringsFor model.language
 
-        modeButton =
-            colorModeButton colors model.colorMode SetColorMode
-
         decorateHeader hdr =
             Element.row
                 [ Element.width Element.fill
                 , Element.spacing 10
                 ]
                 [ hdr
-                , modeButton
-                , languageButton colors model.language SetLanguage
+                , colorModeButton colors strings model.colorMode SetColorMode
+                , languageButton colors strings model.language SetLanguage
                 ]
 
         body =
@@ -418,12 +415,13 @@ beeView model =
                         hdr =
                             puzzleHeader
                                 colors
+                                strings
                                 data.puzzle.displayDate
                                 (Maybe.map ShowPuzzle data.previousPuzzleId)
                                 (Maybe.map ShowPuzzle data.nextPuzzleId)
 
                         ftr =
-                            puzzleFooter colors data.puzzle.editor
+                            puzzleFooter colors strings data.puzzle.editor
 
                         gameView =
                             Element.column
@@ -462,9 +460,9 @@ beeView model =
                                         , Element.spacing 25
                                         , Element.padding 10
                                         ]
-                                        [ controlButton colors "✗" "Delete" Delete (not <| List.isEmpty model.input)
-                                        , controlButton colors "🤷" "Shuffle" Shuffle True
-                                        , controlButton colors "✓" "Submit" Submit (not <| List.isEmpty model.input)
+                                        [ controlButton colors "✗" strings.deleteDescription Delete (not <| List.isEmpty model.input)
+                                        , controlButton colors "🤷" strings.shuffleDescription Shuffle True
+                                        , controlButton colors "✓" strings.submitDescription Submit (not <| List.isEmpty model.input)
                                         ]
                                 ]
 
@@ -550,7 +548,7 @@ beeView model =
                                 JustFound _ ->
                                     Nothing
                     in
-                    mainLayout (loadingHeader msg) Element.none Element.none Element.none Element.none
+                    mainLayout (loadingHeader strings msg) Element.none Element.none Element.none Element.none
     in
     Element.layout
         [ bodyFont
@@ -570,6 +568,10 @@ desiredColumnWidth =
 -}
 inputError : Model -> Maybe String
 inputError model =
+    let
+        strings =
+            stringsFor model.language
+    in
     case model.data of
         Nothing ->
             Nothing
@@ -579,7 +581,7 @@ inputError model =
                 Just ""
 
             else if List.any ((==) (String.fromList model.input) << Tuple.first) data.found then
-                Just "Already found"
+                Just strings.alreadyFoundMessage
 
             else
                 let
@@ -588,27 +590,13 @@ inputError model =
                             List.filter (\c -> c /= data.puzzle.centerLetter && not (List.member c data.puzzle.outerLetters)) model.input
                 in
                 if Set.size wrong > 0 then
-                    let
-                        pluralized =
-                            if Set.size wrong == 1 then
-                                "Wrong letter"
-
-                            else
-                                "Wrong letters"
-
-                        wrongStr =
-                            wrong
-                                |> Set.toList
-                                |> List.intersperse ' '
-                                |> String.fromList
-                    in
-                    Just <| pluralized ++ ": " ++ wrongStr
+                    Just <| strings.wrongLettersMessage wrong
 
                 else if List.length model.input < 4 then
-                    Just "Too short"
+                    Just <| strings.tooShortMessage
 
                 else if List.all ((/=) data.puzzle.centerLetter) model.input then
-                    Just "Missing center letter"
+                    Just <| strings.missingCenterLetterMessage
 
                 else
                     Nothing

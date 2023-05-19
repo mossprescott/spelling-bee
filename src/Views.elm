@@ -129,8 +129,8 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
             ]
 
 
-colorModeButton : Colors -> ColorMode -> (ColorMode -> msg) -> Element msg
-colorModeButton colors colorMode handle =
+colorModeButton : Colors -> Strings -> ColorMode -> (ColorMode -> msg) -> Element msg
+colorModeButton colors strings colorMode handle =
     lightweightButton colors
         (if colorMode == Day then
             "☼"
@@ -138,12 +138,12 @@ colorModeButton colors colorMode handle =
          else
             "☾"
         )
-        "Color Mode"
+        strings.colorModeDescription
         (Just <| handle <| Views.Constants.rotate colorMode)
 
 
-languageButton : Colors -> Language -> (Language -> msg) -> Element msg
-languageButton colors language handle =
+languageButton : Colors -> Strings -> Language -> (Language -> msg) -> Element msg
+languageButton colors strings language handle =
     lightweightButton colors
         (case language of
             EN ->
@@ -152,12 +152,12 @@ languageButton colors language handle =
             ES ->
                 "🇲🇽"
         )
-        "Language"
+        strings.languageDescription
         (Just <| handle <| Language.rotate language)
 
 
-puzzleHeader : Colors -> String -> Maybe msg -> Maybe msg -> Element msg
-puzzleHeader colors date previousMsg nextMsg =
+puzzleHeader : Colors -> Strings -> String -> Maybe msg -> Maybe msg -> Element msg
+puzzleHeader colors strings date previousMsg nextMsg =
     column
         [ centerX
         ]
@@ -165,15 +165,15 @@ puzzleHeader colors date previousMsg nextMsg =
             [ spacing 10
             , Font.size 16
             ]
-            [ lightweightButton colors "←" "Previous Puzzle" previousMsg
-            , lightweightButton colors "→" "Next Puzzle" nextMsg
+            [ lightweightButton colors "←" strings.previousPuzzleDescription previousMsg
+            , lightweightButton colors "→" strings.nextPuzzleDescription nextMsg
             , el [] (text date)
             ]
         ]
 
 
-loadingHeader : Maybe String -> Element msg
-loadingHeader msg =
+loadingHeader : Strings -> Maybe String -> Element msg
+loadingHeader strings msg =
     column
         [ headerFont
         , centerX
@@ -183,18 +183,18 @@ loadingHeader msg =
             [ Font.bold
             , Font.size 24
             ]
-            (text "Spelling Bee")
+            (text <| strings.titleLabel)
         , el
             [ Font.light
             , Font.size 16
             , Font.italic
             ]
-            (text <| Maybe.withDefault "loading…" msg)
+            (text <| Maybe.withDefault strings.loadingLabel msg)
         ]
 
 
-puzzleFooter : Colors -> String -> Element msg
-puzzleFooter colors editor =
+puzzleFooter : Colors -> Strings -> String -> Element msg
+puzzleFooter colors strings editor =
     column
         [ centerX
         , spacing 5
@@ -204,16 +204,18 @@ puzzleFooter colors editor =
             [ Font.light
             , Font.size 16
             ]
-            (text <| "Puzzle by " ++ editor)
+            (text <| strings.editorLabel editor)
         , row
             [ Font.light
             , Font.size 16
             ]
-            [ text "for the "
+            [ text <| strings.attributionLabel
             , link
                 []
                 { url = "https://www.nytimes.com/puzzles/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "New York Times")
+                , label =
+                    el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ]
+                        (text <| strings.nytLabel)
                 }
             ]
         , el [] (text " ") -- space
@@ -221,11 +223,13 @@ puzzleFooter colors editor =
             [ Font.light
             , Font.size 16
             ]
-            [ text "Source and docs "
+            [ text <| strings.sourceLabel
             , link
                 []
                 { url = "https://github.com/mossprescott/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "here")
+                , label =
+                    el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ]
+                        (text <| strings.hereLabel)
                 }
             ]
         ]
@@ -544,7 +548,7 @@ friendList colors strings user friends decorations maxScore groupScore groupHasA
                                                 n
 
                                             Group _ ->
-                                                "Group"
+                                                strings.groupLabel
                                 in
                                 el (playerFontStyles entry) <| text name
                   }
@@ -703,21 +707,7 @@ wordList colors strings sortOrder resortMsg minimumWordsPerColumn words allKnown
 
                     else
                         Nothing
-
-                -- numMsg =
-                --     case ( found, totalMay ) of
-                --         ( x, Just y ) ->
-                --             String.fromInt x ++ " of " ++ String.fromInt y
-                --         ( x, Nothing ) ->
-                --             String.fromInt x
-                -- wordsStr =
-                --     case Maybe.withDefault found totalMay of
-                --         1 ->
-                --             "word"
-                --         _ ->
-                --             "words"
             in
-            -- "Found " ++ numMsg ++ " " ++ wordsStr
             strings.foundLabel found totalMay
     in
     column
