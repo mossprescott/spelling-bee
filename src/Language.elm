@@ -5,6 +5,7 @@ module Language exposing
     , stringsFor
     )
 
+import Array
 import Views.Constants exposing (ScoreLevel(..), WordListSortOrder(..))
 
 
@@ -36,37 +37,18 @@ type alias Strings =
 enStrings : Strings
 enStrings =
     { scoreLabel =
-        \level ->
-            case level of
-                ScoreLevel0 ->
-                    "Beginner"
-
-                ScoreLevel1 ->
-                    "Good Start"
-
-                ScoreLevel2 ->
-                    "Moving Up"
-
-                ScoreLevel3 ->
-                    "Good"
-
-                ScoreLevel4 ->
-                    "Solid"
-
-                ScoreLevel5 ->
-                    "Nice"
-
-                ScoreLevel6 ->
-                    "Great"
-
-                ScoreLevel7 ->
-                    "Amazing"
-
-                ScoreLevel8 ->
-                    "Genius"
-
-                ScoreLevel9 ->
-                    "Queen Bee"
+        scoreLabels
+            "Beginner"
+            [ "Good Start"
+            , "Moving Up"
+            , "Good"
+            , "Solid"
+            , "Nice"
+            , "Great"
+            , "Amazing"
+            , "Genius"
+            , "Queen Bee"
+            ]
     , foundLabel =
         \found totalMay ->
             let
@@ -107,37 +89,18 @@ enStrings =
 esStrings : Strings
 esStrings =
     { scoreLabel =
-        \level ->
-            case level of
-                ScoreLevel0 ->
-                    "Principiante"
-
-                ScoreLevel1 ->
-                    "Buen Comienzo"
-
-                ScoreLevel2 ->
-                    "Mejorando"
-
-                ScoreLevel3 ->
-                    "Bien"
-
-                ScoreLevel4 ->
-                    "Fuerte"
-
-                ScoreLevel5 ->
-                    "Lindo"
-
-                ScoreLevel6 ->
-                    "Excelente"
-
-                ScoreLevel7 ->
-                    "Increíble"
-
-                ScoreLevel8 ->
-                    "Genio"
-
-                ScoreLevel9 ->
-                    "Abeja Reina"
+        scoreLabels
+            "Principiante"
+            [ "Buen Comienzo"
+            , "Mejorando"
+            , "Bien"
+            , "Fuerte"
+            , "Lindo"
+            , "Excelente"
+            , "Increíble"
+            , "Genio"
+            , "Abeja Reina"
+            ]
     , foundLabel =
         \found totalMay ->
             let
@@ -183,3 +146,27 @@ stringsFor language =
 
         ES ->
             esStrings
+
+
+
+-- Helpers:
+
+
+scoreLabels : String -> List String -> ScoreLevel -> String
+scoreLabels beginnerStr strs =
+    let
+        pairs =
+            List.map2 Tuple.pair strs [ ScoreLevel1, ScoreLevel2, ScoreLevel3, ScoreLevel4, ScoreLevel5, ScoreLevel6, ScoreLevel7, ScoreLevel8, ScoreLevel9 ]
+    in
+    \level ->
+        pairs
+            |> List.filterMap
+                (\( s, l ) ->
+                    if l == level then
+                        Just s
+
+                    else
+                        Nothing
+                )
+            |> List.head
+            |> Maybe.withDefault beginnerStr
