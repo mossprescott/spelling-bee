@@ -3,6 +3,7 @@ module Views exposing
     , Size
     , WordEntry
     , assignColors
+    , atCenter
     , centerPosition
     , colorModeButton
     , controlButton
@@ -356,6 +357,11 @@ outerPositions =
     , Position -0.5 1
     , Position 0.5 1
     ]
+
+
+atCenter : Position -> Bool
+atCenter { x, y } =
+    x == 0 && y == 0
 
 
 hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char
