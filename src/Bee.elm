@@ -8,6 +8,8 @@ port module Bee exposing
     , startModel
     )
 
+import Animator exposing (Timeline)
+import Animator.Css
 import Array exposing (Array)
 import Browser
 import Browser.Dom
@@ -23,7 +25,6 @@ import List
 import Puzzle
     exposing
         ( GroupInfo
-        , Puzzle
         , PuzzleBackend
         , PuzzleId
         , PuzzleResponse
@@ -34,12 +35,13 @@ import Puzzle
         , wordScore
         )
 import Random
-import Random.List exposing (shuffle)
 import Set
 import Task
+import Time
 import Views
     exposing
-        ( Size
+        ( Position
+        , Size
         , WordEntry
         , assignColors
         , colorModeButton
@@ -88,7 +90,11 @@ type alias Flags =
 
 type alias Model =
     { data : Maybe PuzzleResponse
-    , letters : Array Char -- the letters of the puzzle, in an arbitrary order for display
+
+    -- display position for each letter, center first, then outers in the order from the puzzle
+    , letters : Array (Timeline Position)
+
+    -- , used: Array (Timeline Bool)
     , input : List Char
     , selectedPuzzleId : Maybe PuzzleId
     , message : Message
@@ -111,7 +117,7 @@ a medium-sized phone.
 startModel : Flags -> Model
 startModel flags =
     Model Nothing
-        Array.empty
+        startLetters
         []
         Nothing
         None
@@ -141,7 +147,7 @@ type Msg
     | Edit String
     | Delete
     | Shuffle
-    | Shuffled (Array Char)
+    | SwapPositions Int Int
     | ResortWords WordListSortOrder
     | Submit
     | ShowPuzzle PuzzleId
@@ -150,11 +156,12 @@ type Msg
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
+    | Tick Time.Posix
     | NoOp String
 
 
-subscriptions : model -> Sub Msg
-subscriptions _ =
+subscriptions : Model -> Sub Msg
+subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
         , receiveIsDarkPort
@@ -166,7 +173,31 @@ subscriptions _ =
                     else
                         Day
             )
+        , animator
+            |> Animator.toSubscription Tick model
         ]
+
+
+animator : Animator.Animator Model
+animator =
+    let
+        watch : Int -> Animator.Animator Model -> Animator.Animator Model
+        watch idx =
+            let
+                -- getter: assume idx is valid, otherwise just return a meaningless value
+                get : Model -> Timeline Position
+                get model =
+                    Array.get idx model.letters
+                        |> Maybe.withDefault (Animator.init <| Position 0 0)
+
+                -- setter: assume idx is valid, otherwise the value is discarded
+                set : Timeline Position -> Model -> Model
+                set newLetters model =
+                    { model | letters = Array.set idx newLetters model.letters }
+            in
+            Animator.Css.watching get set
+    in
+    List.foldl watch Animator.animator (List.range 0 6)
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -181,7 +212,6 @@ update backend msg model =
                 ReceivePuzzle (Result.Ok data) ->
                     ( { model
                         | data = Just data
-                        , letters = startLetters data.puzzle
                       }
                     , initialFocusTask model
                     )
@@ -234,10 +264,24 @@ update backend msg model =
                     )
 
                 Shuffle ->
-                    ( model, Random.generate (Array.fromList >> Shuffled) ((Array.toList >> shuffle) model.letters) )
+                    ( model
+                      -- , Random.generate (Array.fromList >> Shuffled) ((Array.toList >> shuffle) model.letters)
+                    , Task.perform (always <| SwapPositions 0 1) Time.now
+                    )
 
-                Shuffled letters ->
-                    ( { model | letters = letters }, Cmd.none )
+                SwapPositions idx1 idx2 ->
+                    let
+                        swap : Int -> Int -> (Array (Timeline Position) -> Array (Timeline Position))
+                        swap src dst positions =
+                            Maybe.map2
+                                (\ps pd -> ps |> Animator.go Animator.slowly (Animator.current pd) |> (\p -> Array.set src p positions))
+                                (positions |> Array.get src)
+                                (positions |> Array.get dst)
+                                |> Maybe.withDefault positions
+                    in
+                    ( { model | letters = (swap idx1 idx2 << swap idx2 idx1) model.letters }
+                    , Cmd.none
+                    )
 
                 ResortWords order ->
                     ( { model | wordSort = order }
@@ -280,7 +324,7 @@ update backend msg model =
                     let
                         newLetters =
                             if newData.id /= data.id then
-                                startLetters newData.puzzle
+                                startLetters
 
                             else
                                 model.letters
@@ -339,22 +383,18 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                Tick newTime ->
+                    ( Animator.update newTime animator model
+                    , Cmd.none
+                    )
+
                 NoOp str ->
                     ( Debug.log str model, Cmd.none )
 
 
-startLetters : Puzzle -> Array Char
-startLetters puzzle =
-    let
-        outer =
-            Array.fromList puzzle.outerLetters
-    in
-    Array.append
-        (Array.slice 0 3 outer)
-        (Array.append
-            (Array.fromList [ puzzle.centerLetter ])
-            (Array.slice 3 6 outer)
-        )
+startLetters : Array (Timeline Position)
+startLetters =
+    Array.fromList <| List.map Animator.init <| Views.centerPosition :: Views.outerPositions
 
 
 {-| For the benefit of desktop users, start with the input field focused, based on there
@@ -431,6 +471,8 @@ beeView model =
                             Element.column
                                 [ centerX
                                 , Element.spacing 10
+
+                                -- , Element.explain Debug.todo
                                 ]
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
@@ -456,7 +498,13 @@ beeView model =
                                                 |> List.head
                                                 |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive colors data.puzzle.centerLetter model.letters (Set.fromList model.input)
+                                , hive colors
+                                    data.puzzle.centerLetter
+                                    (List.map2 Tuple.pair
+                                        (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                        (Array.toList model.letters)
+                                    )
+                                    (Set.fromList model.input)
                                     |> Element.map Type
                                 , whenLatest <|
                                     Element.row
