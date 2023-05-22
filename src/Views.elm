@@ -153,13 +153,7 @@ colorModeButton colors strings colorMode handle =
 languageButton : Colors -> Strings -> Language -> (Language -> msg) -> Element msg
 languageButton colors strings language handle =
     lightweightButton colors
-        (case language of
-            EN ->
-                "🇺🇸"
-
-            ES ->
-                "🇲🇽"
-        )
+        strings.icon
         strings.languageDescription
         (Just <| handle <| Language.rotate language)
 
