@@ -154,19 +154,11 @@ hive colors center letters used =
                             at 1 |> leaveSmoothly 0.7 |> arriveSmoothly 0
 
         accentColor letter =
-            if letter == center && not (Set.member letter used) then
+            if letter == center then
                 colors.primaryTint
 
             else
                 colors.secondaryTint
-
-        toCssColor : Color -> String
-        toCssColor color =
-            let
-                rgb =
-                    toRgb color
-            in
-            "rgb(" ++ (String.join " " <| List.map (\x -> String.fromInt (round (255 * x))) [ rgb.red, rgb.green, rgb.blue ]) ++ ")"
 
         geometryStyle =
             [ Html.Attributes.style "width" "54px"
@@ -178,7 +170,7 @@ hive colors center letters used =
 
         accentStyle letter =
             if Set.member letter used then
-                [ Html.Attributes.style "border-style" "solid"
+                [ Html.Attributes.style "background-color" (toCssColor <| colors.background)
                 , Html.Attributes.style "border-color" (toCssColor <| accentColor letter)
                 ]
 
@@ -234,3 +226,16 @@ hive colors center letters used =
                 ]
             <|
                 List.map cell letters
+
+
+
+-- Utilities
+
+
+toCssColor : Color -> String
+toCssColor color =
+    let
+        rgb =
+            toRgb color
+    in
+    "rgb(" ++ (String.join " " <| List.map (\x -> String.fromInt (round (255 * x))) [ rgb.red, rgb.green, rgb.blue ]) ++ ")"
