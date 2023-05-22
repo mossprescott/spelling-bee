@@ -40,11 +40,9 @@ import Task
 import Time
 import Views
     exposing
-        ( Position
-        , Size
+        ( Size
         , WordEntry
         , assignColors
-        , atCenter
         , colorModeButton
         , controlButton
         , entered
@@ -52,7 +50,6 @@ import Views
         , hintFound
         , hintNone
         , hintWarning
-        , hive
         , languageButton
         , loadingHeader
         , mainLayout
@@ -66,6 +63,13 @@ import Views.Constants as Constants
         ( ColorMode(..)
         , WordListSortOrder(..)
         , bodyFont
+        )
+import Views.Hive
+    exposing
+        ( Position
+        , atCenter
+        , hive
+        , startPositions
         )
 
 
@@ -118,7 +122,7 @@ a medium-sized phone.
 startModel : Flags -> Model
 startModel flags =
     Model Nothing
-        startLetters
+        startPositions
         []
         Nothing
         None
@@ -399,7 +403,7 @@ update backend msg model =
                     let
                         newLetters =
                             if newData.id /= data.id then
-                                startLetters
+                                startPositions
 
                             else
                                 model.letters
@@ -465,11 +469,6 @@ update backend msg model =
 
                 NoOp str ->
                     ( Debug.log str model, Cmd.none )
-
-
-startLetters : Array (Timeline Position)
-startLetters =
-    Array.fromList <| List.map Animator.init <| Views.centerPosition :: Views.outerPositions
 
 
 {-| For the benefit of desktop users, start with the input field focused, based on there
