@@ -34,7 +34,8 @@ with the following exceptions:
 -}
 type alias Strings =
     { -- Header stuff:
-      titleLabel : String
+      icon : String
+    , titleLabel : String
     , loadingLabel : String
     , editorLabel : String -> String
     , attributionLabel : String
@@ -71,7 +72,8 @@ type alias Strings =
 
 enStrings : Strings
 enStrings =
-    { titleLabel = "Spelling Bee"
+    { icon = "🇺🇸"
+    , titleLabel = "Spelling Bee"
     , loadingLabel = "loading…"
     , editorLabel = \ed -> "Puzzle by " ++ ed
     , attributionLabel = "for the "
@@ -137,7 +139,8 @@ enStrings =
 
 esStrings : Strings
 esStrings =
-    { titleLabel = "<<Spelling Bee>>"
+    { icon = "🇲🇽"
+    , titleLabel = "<<Spelling Bee>>"
     , loadingLabel = "<<loading…>>"
     , editorLabel = \ed -> "<<Puzzle by>> " ++ ed
     , attributionLabel = "<<for the>> "
