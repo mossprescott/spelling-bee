@@ -11,6 +11,7 @@ import Language exposing (Language(..))
 import Puzzle exposing (..)
 import Views exposing (Size)
 import Views.Constants exposing (ColorMode(..), WordListSortOrder(..))
+import Views.Hive exposing (startPositions)
 
 
 main : Program () Model Msg
@@ -53,7 +54,7 @@ startModel =
                     ]
             , group = { score = 121, hasAllPangrams = False }
             }
-    , letters = Array.fromList [ 'a', 'g', 'l', 'o', 'm', 'r', 'u' ]
+    , letters = startPositions
     , input = []
     , selectedPuzzleId = Just 1234
     , message = JustFound "moral"
