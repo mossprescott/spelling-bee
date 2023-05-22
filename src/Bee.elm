@@ -9,7 +9,6 @@ port module Bee exposing
     )
 
 import Animator exposing (Timeline)
-import Animator.Css
 import Array exposing (Array)
 import Browser
 import Browser.Dom
@@ -185,24 +184,7 @@ subscriptions model =
 
 animator : Animator.Animator Model
 animator =
-    let
-        watch : Int -> Animator.Animator Model -> Animator.Animator Model
-        watch idx =
-            let
-                -- getter: assume idx is valid, otherwise just return a meaningless value
-                get : Model -> Timeline Position
-                get model =
-                    Array.get idx model.letters
-                        |> Maybe.withDefault (Animator.init <| Position 0 0)
-
-                -- setter: assume idx is valid, otherwise the value is discarded
-                set : Timeline Position -> Model -> Model
-                set newLetters model =
-                    { model | letters = Array.set idx newLetters model.letters }
-            in
-            Animator.Css.watching get set
-    in
-    List.foldl watch Animator.animator (List.range 0 6)
+    Views.Hive.animator .letters (\newLetters model -> { model | letters = newLetters })
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -273,7 +255,7 @@ update backend msg model =
                         centerAtCenter =
                             model.letters
                                 |> Array.get 0
-                                |> Maybe.map (Animator.current >> atCenter)
+                                |> Maybe.map atCenter
                                 |> Maybe.withDefault False
 
                         -- Swap the center letter (wherever it is) with a randomly-chosen
@@ -291,7 +273,7 @@ update backend msg model =
                                 , model.letters
                                     |> Array.toList
                                     |> List.indexedMap Tuple.pair
-                                    |> List.filter (Tuple.second >> Animator.current >> atCenter)
+                                    |> List.filter (Tuple.second >> atCenter)
                                     |> List.head
                                     |> Maybe.map Tuple.first
                                     |> Maybe.withDefault 1
@@ -351,7 +333,7 @@ update backend msg model =
                             Maybe.map2
                                 (\ps pd ->
                                     ps
-                                        |> Animator.go Animator.slowly (Animator.current pd)
+                                        |> Views.Hive.animateMove (Animator.current ps) (Animator.current pd)
                                         |> (\p -> Array.set src p positions)
                                 )
                                 (positions |> Array.get src)

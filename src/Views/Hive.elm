@@ -1,5 +1,8 @@
 module Views.Hive exposing
     ( Position
+    , PositionState
+    , animateMove
+    , animator
     , atCenter
     , hive
     , startPositions
@@ -8,8 +11,8 @@ module Views.Hive exposing
 {-| Relative position of a letter, in terms of rows and colums.
 -}
 
-import Animator exposing (Timeline)
-import Animator.Css exposing (transform, xy)
+import Animator exposing (Timeline, arriveSmoothly, at, leaveLate, leaveSmoothly, upcoming)
+import Animator.Css exposing (center, transform, xy)
 import Array exposing (Array)
 import Element exposing (..)
 import Html exposing (Html)
@@ -19,49 +22,136 @@ import Set exposing (Set)
 import Views.Constants exposing (Colors)
 
 
-type alias Position =
-    { x : Float, y : Float }
-
-
-{-| Where the "center letter" starts.
--}
-centerPosition : Position
-centerPosition =
-    Position 0 0
+type Position
+    = Center
+    | Outer Int -- 0 at the top-left; clockwise after that
+    | Between Position Position -- Midpoint of the animation from one position to another
 
 
 {-| Where the rest of the letters start.
 -}
 outerPositions : List Position
 outerPositions =
-    [ Position -0.5 -1
-    , Position 0.5 -1
-    , Position -1 0
-    , Position 1 0
-    , Position -0.5 1
-    , Position 0.5 1
-    ]
+    List.range 0 6 |> List.map Outer
 
 
-startPositions : Array (Timeline Position)
+coords : Float -> Position -> { x : Float, y : Float }
+coords scale pos =
+    case pos of
+        Center ->
+            { x = 0, y = 0 }
+
+        Outer index ->
+            Array.fromList
+                [ { x = -0.5 * scale, y = -1 * scale }
+                , { x = 0.5 * scale, y = -1 * scale }
+                , { x = -1 * scale, y = 0 * scale }
+                , { x = 1 * scale, y = 0 * scale }
+                , { x = -0.5 * scale, y = 1 * scale }
+                , { x = 0.5 * scale, y = 1 * scale }
+                ]
+                -- mod?
+                |> Array.get index
+                -- bogus
+                |> Maybe.withDefault { x = -0.5 * scale, y = -1 * scale }
+
+        Between p1 p2 ->
+            let
+                c1 =
+                    coords scale p1
+
+                c2 =
+                    coords scale p2
+
+                offsetRatio =
+                    0
+            in
+            -- Start with the midpoint, then offset perpendicularly:
+            { x = ((c1.x + c2.x) / 2) + ((c2.y - c1.y) * offsetRatio)
+            , y = ((c1.y + c2.y) / 2) - ((c2.x - c1.x) * offsetRatio)
+            }
+
+
+type alias PositionState =
+    Array (Timeline Position)
+
+
+startPositions : PositionState
 startPositions =
-    (centerPosition :: outerPositions)
+    (Center :: outerPositions)
         |> List.map Animator.init
         |> Array.fromList
 
 
-atCenter : Position -> Bool
-atCenter { x, y } =
-    x == 0 && y == 0
+animator : (model -> PositionState) -> (PositionState -> model -> model) -> Animator.Animator model
+animator getState setState =
+    let
+        watch : Int -> Animator.Animator model -> Animator.Animator model
+        watch idx =
+            let
+                -- getter: assume idx is valid, otherwise just return a meaningless value
+                get : model -> Timeline Position
+                get model =
+                    getState model
+                        |> Array.get idx
+                        |> Maybe.withDefault (Animator.init Center)
+
+                -- setter: assume idx is valid, otherwise the value is discarded
+                set : Timeline Position -> model -> model
+                set newLetters model =
+                    getState model
+                        |> Array.set idx newLetters
+                        |> (\s -> setState s model)
+            in
+            Animator.Css.watching get set
+    in
+    List.foldl watch Animator.animator (List.range 0 6)
+
+
+destination : Position -> Position
+destination pos =
+    case pos of
+        Between _ new ->
+            new
+
+        _ ->
+            pos
+
+
+animateMove : Position -> Position -> Timeline Position -> Timeline Position
+animateMove old new =
+    Animator.interrupt
+        [ Animator.event Animator.quickly (Between (destination old) (destination new))
+        , Animator.event Animator.quickly (destination new)
+        ]
+
+
+atCenter : Timeline Position -> Bool
+atCenter =
+    upcoming Center
 
 
 hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char
 hive colors center letters used =
     let
+        -- xy transform seems to be some fixed curve:
         position : Animator.Css.Attribute Position
         position =
-            transform <|
-                \pos -> xy { x = pos.x * 65, y = pos.y * 65 }
+            transform (coords 65 >> xy)
+
+        -- layer a fade on top of the slide:
+        visibility : Animator.Css.Attribute Position
+        visibility =
+            Animator.Css.opacity <|
+                \pos ->
+                    case pos of
+                        Between _ _ ->
+                            -- Fade out very quickly, to just suggest the destination:
+                            at 0 |> leaveSmoothly 0 |> arriveSmoothly 0.7
+
+                        _ ->
+                            -- Fade in very late:
+                            at 1 |> leaveSmoothly 0.7 |> arriveSmoothly 0
 
         accentColor letter =
             if letter == center && not (Set.member letter used) then
@@ -111,7 +201,7 @@ hive colors center letters used =
         cell : ( Char, Timeline Position ) -> Html Char
         cell ( letter, pos ) =
             Animator.Css.div pos
-                [ position ]
+                [ position, visibility ]
                 (geometryStyle
                     ++ [ Html.Attributes.style "font-size" "32px"
                        , Html.Attributes.style "border-radius" "5px"
