@@ -11,6 +11,7 @@ import Views.Constants exposing (ScoreLevel(..), WordListSortOrder(..))
 
 type Language
     = EN
+    | DE
     | ES
 
 
@@ -18,6 +19,9 @@ rotate : Language -> Language
 rotate language =
     case language of
         EN ->
+            DE
+
+        DE ->
             ES
 
         ES ->
@@ -137,6 +141,73 @@ enStrings =
     }
 
 
+deStrings : Strings
+deStrings =
+    { icon = "🇩🇪"
+    , titleLabel = "Spelling Bee"
+    , loadingLabel = "lädt…"
+    , editorLabel = \ed -> "Puzzle von " ++ ed
+    , attributionLabel = "für die "
+    , nytLabel = "New York Times"
+    , sourceLabel = "Quelle und Dokumente "
+    , hereLabel = "hier"
+
+    -- Puzzle controls:
+    , scoreLabel =
+        scoreLabels
+            "Anfänger"
+            [ "Guter Anfang"
+            , "Aufsteigend"
+            , "Gut"
+            , "Solid"
+            , "Nett"
+            , "Großartig"
+            , "Erstaunlich"
+            , "Genie"
+            , "Bienenkönigin"
+            ]
+    , foundLabel =
+        foundLabels
+            "1 Word gefunden"
+            (\m -> m ++ " Wörter gefunden")
+            (\m n -> m ++ " von " ++ n ++ " Wörter gefunden")
+    , sortLabel =
+        \order ->
+            case order of
+                Found ->
+                    "g↑"
+
+                Alpha ->
+                    "a↑"
+
+                Length ->
+                    "l↑"
+    , friendsLabel = "Freunde"
+    , groupLabel = "Gruppe"
+    , guestLabel = "Gast"
+
+    -- Error messages:
+    , alreadyFoundMessage = "schon gefunden"
+    , wrongLettersMessage =
+        wrongLettersMessage
+            (\ls -> "falscher Buchstabe: " ++ ls)
+            (\ls -> "falsche Buchstaben: " ++ ls)
+    , tooShortMessage = "zu kurz"
+    , missingCenterLetterMessage = "fehlender Mittelbuchstabe "
+    , notInWordListMessage = "nicht in der Wortliste"
+
+    -- Accessibility:
+    , previousPuzzleDescription = "<<Previous Puzzle>>"
+    , nextPuzzleDescription = "Nächste Puzzle"
+    , colorModeDescription = "Tag un Nacht"
+    , languageDescription = "Sprache"
+    , sortDescription = "<<Sort Order>>"
+    , deleteDescription = "<<Delete>>"
+    , shuffleDescription = "<<Shuffle>>"
+    , submitDescription = "<<Submit>>"
+    }
+
+
 esStrings : Strings
 esStrings =
     { icon = "🇲🇽"
@@ -209,6 +280,9 @@ stringsFor language =
     case language of
         EN ->
             enStrings
+
+        DE ->
+            deStrings
 
         ES ->
             esStrings
