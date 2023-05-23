@@ -215,11 +215,17 @@ shuffle op state =
 hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char
 hive colors center letters used =
     let
-        slide =
-            True
+        options =
+            { -- Letters slide (linearly) from old to new position
+              slide = True
 
-        fade =
-            True
+            -- Letters fade out quickly, then back in quickly ()
+            , fade =
+                True
+
+            -- How much of the time is in the "faded" phase, or something like that
+            , smoothness = 0.8
+            }
 
         scale =
             65
@@ -227,7 +233,7 @@ hive colors center letters used =
         -- xy transform seems to be some fixed curve:
         position : Maybe (Animator.Css.Attribute Position)
         position =
-            if slide then
+            if options.slide then
                 Just (transform (coords scale >> xy))
 
             else
@@ -236,18 +242,18 @@ hive colors center letters used =
         -- layer a fade on top of the slide:
         visibility : Maybe (Animator.Css.Attribute Position)
         visibility =
-            if fade then
+            if options.fade then
                 Just <|
                     Animator.Css.opacity <|
                         \pos ->
                             case pos of
                                 Between _ _ ->
                                     -- Fade out very quickly, to just suggest the destination:
-                                    at 0 |> leaveSmoothly 0 |> arriveSmoothly 0.7
+                                    at 0 |> leaveSmoothly 0 |> arriveSmoothly options.smoothness
 
                                 _ ->
                                     -- Fade in very late:
-                                    at 1 |> leaveSmoothly 0.7 |> arriveSmoothly 0
+                                    at 1 |> leaveSmoothly options.smoothness |> arriveSmoothly 0
 
             else
                 Nothing
