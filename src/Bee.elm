@@ -160,6 +160,7 @@ type Msg
     | SetColorMode ColorMode
     | SetLanguage Language
     | ShowPuzzle PuzzleId
+    | DoShuffle ShuffleOp -- Note: broken out as a step so you can see which op was chosen in the debugger
     | Shuffled (Array Position)
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
@@ -268,8 +269,12 @@ update backend msg model =
                         ( centerMoveWeight, SwapWithCenter )
                         [ ( 3, RandomizeOuter )
                         ]
-                        |> Random.andThen (\op -> shuffle op (currentPositions model.letters))
-                        |> Random.generate Shuffled
+                        |> Random.generate DoShuffle
+                    )
+
+                DoShuffle op ->
+                    ( model
+                    , Random.generate Shuffled (shuffle op (currentPositions model.letters))
                     )
 
                 Shuffled newPositions ->
