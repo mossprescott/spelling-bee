@@ -66,9 +66,10 @@ import Views.Constants as Constants
 import Views.Hive
     exposing
         ( Position
-        , PositionState
         , ShuffleOp(..)
-        , atCenter
+        , applyPositions
+        , centerAtCenter
+        , currentPositions
         , hive
         , shuffle
         , startPositions
@@ -154,12 +155,12 @@ type Msg
     | Edit String
     | Delete
     | Shuffle
-    | Shuffled PositionState
-    | ResortWords WordListSortOrder
     | Submit
-    | ShowPuzzle PuzzleId
+    | ResortWords WordListSortOrder
     | SetColorMode ColorMode
     | SetLanguage Language
+    | ShowPuzzle PuzzleId
+    | Shuffled (Array Position)
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
@@ -254,16 +255,25 @@ update backend msg model =
                     )
 
                 Shuffle ->
+                    let
+                        centerMoveWeight =
+                            if centerAtCenter model.letters then
+                                0
+
+                            else
+                                1
+                    in
                     ( model
                     , Random.weighted
-                        ( 1, SwapWithCenter )
-                        [ ( 1, RandomizeOuter ) ]
-                        |> Random.andThen (\op -> shuffle op model.letters)
+                        ( centerMoveWeight, SwapWithCenter )
+                        [ ( 3, RandomizeOuter )
+                        ]
+                        |> Random.andThen (\op -> shuffle op (currentPositions model.letters))
                         |> Random.generate Shuffled
                     )
 
-                Shuffled letters ->
-                    ( { model | letters = letters }
+                Shuffled newPositions ->
+                    ( { model | letters = applyPositions newPositions model.letters }
                     , Cmd.none
                     )
 

@@ -4,7 +4,9 @@ module Views.Hive exposing
     , ShuffleOp(..)
     , animateMove
     , animator
-    , atCenter
+    , applyPositions
+    , centerAtCenter
+    , currentPositions
     , hive
     , shuffle
     , startPositions
@@ -76,6 +78,12 @@ coords scale pos =
             }
 
 
+{-| State of all of the letters.
+
+Note: For what we're currently doing, `Timeline (Array Position)` would work, and might be simpler
+to deal with?
+
+-}
 type alias PositionState =
     Array (Timeline Position)
 
@@ -152,56 +160,66 @@ atCenter =
     upcoming Center
 
 
+centerAtCenter : PositionState -> Bool
+centerAtCenter state =
+    Array.get 0 state |> Maybe.map atCenter |> Maybe.withDefault True
+
+
 {-| Operations you can select from to influence what kind of re-arrangements happen, and how often.
 -}
 type ShuffleOp
-    = SwapOuters -- Swap two random non-center letters
+    = SwapMultiple Int -- perform a series of swaps involving the given number of digits (2 to 6)
+      -- | SwapOuters -- Swap two random non-center letters
     | SwapWithCenter -- Swap the center letter (wherever it is) with a random other letter
     | RandomizeOuter -- Re-arrange all the non-center letters, leaving the center letter in place
-    | RestoreCenter -- Move the center letter back to the center position
+    | RestoreCenter -- Move the center letter back to the center position (not actually random at all)
 
 
-shuffle : ShuffleOp -> PositionState -> Generator PositionState
+shuffle : ShuffleOp -> Array Position -> Generator (Array Position)
 shuffle op state =
     let
         -- Current position occupied by the letter at the given index. Note: bogus default
         -- here in case of a bad index
+        currentByIdx : Int -> Position
         currentByIdx idx =
-            Array.get idx state |> Maybe.map (Animator.current >> destination) |> Maybe.withDefault Center
+            Array.get idx state |> Maybe.withDefault Center
     in
     case op of
-        SwapOuters ->
-            -- TODO
-            Random.constant state
+        SwapMultiple swaps ->
+            if swaps < 2 || swaps > 6 then
+                -- todo
+                Random.constant state
 
+            else
+                Random.constant state
+
+        -- SwapOuters ->
+        --
         SwapWithCenter ->
-            Random.int 1 6
+            Random.int 1 5
                 |> Random.map
                     (\idx ->
                         state
                             |> Array.indexedMap
-                                (\i ->
+                                (\i p ->
                                     if i == 0 then
-                                        animateMove (currentByIdx idx)
+                                        currentByIdx idx
 
                                     else if i == idx then
-                                        animateMove (currentByIdx 0)
+                                        currentByIdx 0
 
                                     else
-                                        identity
+                                        p
                                 )
                     )
 
         RandomizeOuter ->
             let
-                updateOuters : List Int -> PositionState
+                updateOuters : List Int -> Array Position
                 updateOuters newOuters =
                     Array.append
                         (Array.slice 0 1 state)
-                        (List.map2
-                            (\pos idx -> animateMove (currentByIdx idx) pos)
-                            (Array.toList state |> List.drop 1)
-                            newOuters
+                        (List.map currentByIdx newOuters
                             |> Array.fromList
                         )
             in
@@ -210,6 +228,20 @@ shuffle op state =
         RestoreCenter ->
             -- TODO
             Random.constant state
+
+
+currentPositions : PositionState -> Array Position
+currentPositions =
+    Array.map (Animator.current >> destination)
+
+
+applyPositions : Array Position -> PositionState -> PositionState
+applyPositions newPositions state =
+    List.map2
+        (\p t -> animateMove p t)
+        (Array.toList newPositions)
+        (Array.toList state)
+        |> Array.fromList
 
 
 
@@ -278,7 +310,7 @@ hive colors center letters used =
             , Html.Attributes.style "height" "54px"
             , Html.Attributes.style "position" "absolute"
             ]
-                ++ (if slide then
+                ++ (if options.slide then
                         [ Html.Attributes.style "left" "65px"
                         , Html.Attributes.style "top" "65px"
                         ]
