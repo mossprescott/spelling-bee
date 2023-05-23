@@ -1,7 +1,7 @@
 module Views.Hive exposing
     ( Position
     , PositionState
-    , ShuffleOp(..)
+    , ShuffleOp
     , animateMove
     , animator
     , applyPositions
@@ -166,68 +166,77 @@ centerAtCenter state =
 
 
 {-| Operations you can select from to influence what kind of re-arrangements happen, and how often.
+
+Note: each individual swap can randomly swap a letter with itself, and subsequent swaps can
+affect the same letters, so the overall effect is that fewer letters are actually moved than
+op.swaps would seem to call for.
+
 -}
-type ShuffleOp
-    = SwapMultiple Int -- perform a series of swaps involving the given number of digits (2 to 6)
-      -- | SwapOuters -- Swap two random non-center letters
-    | SwapWithCenter -- Swap the center letter (wherever it is) with a random other letter
-    | RandomizeOuter -- Re-arrange all the non-center letters, leaving the center letter in place
-    | RestoreCenter -- Move the center letter back to the center position (not actually random at all)
+type alias ShuffleOp =
+    { swaps : Int
+    , restoreCenter : Bool
+    }
 
 
 shuffle : ShuffleOp -> Array Position -> Generator (Array Position)
 shuffle op state =
     let
-        -- Current position occupied by the letter at the given index. Note: bogus default
+        -- Position occupied by the letter at the given index. Note: bogus default
         -- here in case of a bad index
-        currentByIdx : Int -> Position
-        currentByIdx idx =
-            Array.get idx state |> Maybe.withDefault Center
-    in
-    case op of
-        SwapMultiple swaps ->
-            if swaps < 2 || swaps > 6 then
-                -- todo
-                Random.constant state
+        currentByIdx : Int -> Array Position -> Position
+        currentByIdx idx ps =
+            Array.get idx ps |> Maybe.withDefault Center
+
+        doSwaps : Int -> Array Position -> Generator (Array Position)
+        doSwaps swaps ps =
+            if swaps > 0 then
+                Random.map2
+                    (\idx1 idx2 ->
+                        Array.indexedMap
+                            (\idx p ->
+                                if idx == idx1 then
+                                    currentByIdx idx2 ps
+
+                                else if idx == idx2 then
+                                    currentByIdx idx1 ps
+
+                                else
+                                    p
+                            )
+                            ps
+                    )
+                    (Random.int 0 6)
+                    (Random.int 0 6)
+                    |> Random.andThen (doSwaps (swaps - 1))
 
             else
-                Random.constant state
+                Random.constant ps
 
-        -- SwapOuters ->
-        --
-        SwapWithCenter ->
-            Random.int 1 5
-                |> Random.map
-                    (\idx ->
-                        state
-                            |> Array.indexedMap
-                                (\i p ->
-                                    if i == 0 then
-                                        currentByIdx idx
-
-                                    else if i == idx then
-                                        currentByIdx 0
+        fixCenter : Array Position -> Array Position
+        fixCenter ps =
+            if op.restoreCenter then
+                case Array.get 0 ps of
+                    Just (Outer idx) ->
+                        Array.append
+                            (Array.fromList [ Center ])
+                            (Array.map
+                                (\p ->
+                                    if p == Center then
+                                        Outer idx
 
                                     else
                                         p
                                 )
-                    )
+                                (Array.slice 1 7 ps)
+                            )
 
-        RandomizeOuter ->
-            let
-                updateOuters : List Int -> Array Position
-                updateOuters newOuters =
-                    Array.append
-                        (Array.slice 0 1 state)
-                        (List.map currentByIdx newOuters
-                            |> Array.fromList
-                        )
-            in
-            Random.List.shuffle (List.range 1 6) |> Random.map updateOuters
+                    _ ->
+                        ps
 
-        RestoreCenter ->
-            -- TODO
-            Random.constant state
+            else
+                ps
+    in
+    state |> doSwaps op.swaps |> Random.map fixCenter
 
 
 currentPositions : PositionState -> Array Position

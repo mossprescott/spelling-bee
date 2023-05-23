@@ -33,7 +33,7 @@ import Puzzle
         , unsharedScore
         , wordScore
         )
-import Random exposing (Generator)
+import Random
 import Set
 import Task
 import Time
@@ -66,9 +66,8 @@ import Views.Constants as Constants
 import Views.Hive
     exposing
         ( Position
-        , ShuffleOp(..)
+        , ShuffleOp
         , applyPositions
-        , centerAtCenter
         , currentPositions
         , hive
         , shuffle
@@ -256,20 +255,12 @@ update backend msg model =
                     )
 
                 Shuffle ->
-                    let
-                        centerMoveWeight =
-                            if centerAtCenter model.letters then
-                                0
-
-                            else
-                                1
-                    in
                     ( model
-                    , Random.weighted
-                        ( centerMoveWeight, SwapWithCenter )
-                        [ ( 3, RandomizeOuter )
-                        ]
-                        |> Random.generate DoShuffle
+                    , Random.generate DoShuffle <|
+                        Random.map2
+                            ShuffleOp
+                            (Random.int 1 5)
+                            (Random.weighted ( 2, False ) [ ( 1, True ) ])
                     )
 
                 DoShuffle op ->
