@@ -211,12 +211,12 @@ deStrings =
 esStrings : Strings
 esStrings =
     { icon = "🇲🇽"
-    , titleLabel = "<<Spelling Bee>>"
-    , loadingLabel = "<<loading…>>"
-    , editorLabel = \ed -> "<<Puzzle by>> " ++ ed
-    , attributionLabel = "<<for the>> "
+    , titleLabel = "Spelling Bee"
+    , loadingLabel = "descargando…"
+    , editorLabel = \ed -> "Puzzle de " ++ ed
+    , attributionLabel = "para el "
     , nytLabel = "New York Times"
-    , sourceLabel = "<<Source and docs>> "
+    , sourceLabel = "Código y docs "
     , hereLabel = "aqui"
 
     -- Puzzle controls:
@@ -250,28 +250,28 @@ esStrings =
                 Length ->
                     "l↑"
     , friendsLabel = "Amigos"
-    , groupLabel = "<<Group>>"
+    , groupLabel = "Grupo"
     , guestLabel = "Visitante"
 
     -- Error messages:
-    , alreadyFoundMessage = "<<Already Found>>"
+    , alreadyFoundMessage = "Ya encontrado"
     , wrongLettersMessage =
         wrongLettersMessage
-            (\ls -> "<<Wrong letter>>: " ++ ls)
-            (\ls -> "<<Wrong letters>>: " ++ ls)
-    , tooShortMessage = "<<Too short>>"
-    , missingCenterLetterMessage = "<<Missing center letter>>"
-    , notInWordListMessage = "<<Not in word list>>"
+            (\ls -> "Letra incorrecta: " ++ ls)
+            (\ls -> "Letras incorrectas: " ++ ls)
+    , tooShortMessage = "Demasiado corto"
+    , missingCenterLetterMessage = "No hay letra central"
+    , notInWordListMessage = "No en la lista de palabras"
 
     -- Accessibility:
-    , previousPuzzleDescription = "<<Previous Puzzle>>"
-    , nextPuzzleDescription = "<<Next Puzzle>>"
-    , colorModeDescription = "<<Color Mode>>"
-    , languageDescription = "<<Language>>"
+    , previousPuzzleDescription = "Rompecabezas anterior"
+    , nextPuzzleDescription = "Rompecabezas siguiente"
+    , colorModeDescription = "Modo color"
+    , languageDescription = "Idioma"
     , sortDescription = "Orden de Clasificación"
-    , deleteDescription = "<<Delete>>"
-    , shuffleDescription = "<<Shuffle>>"
-    , submitDescription = "<<Submit>>"
+    , deleteDescription = "Borra"
+    , shuffleDescription = "Baraja"
+    , submitDescription = "Envía"
     }
 
 
