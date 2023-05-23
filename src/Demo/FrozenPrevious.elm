@@ -7,9 +7,10 @@ import Array
 import Bee exposing (Message(..), Model)
 import Demo.FrozenMain exposing (Msg, frozenMain)
 import Dict
+import Language exposing (Language(..))
 import Puzzle exposing (..)
-import Views exposing (Size, WordListSortOrder(..))
-import Views.Constants exposing (ColorMode(..))
+import Views exposing (Size)
+import Views.Constants exposing (ColorMode(..), WordListSortOrder(..))
 
 
 main : Program () Model Msg
@@ -60,4 +61,5 @@ startModel =
     , wordSort = Alpha
     , viewport = Size 375 675
     , colorMode = Night
+    , language = ES
     }

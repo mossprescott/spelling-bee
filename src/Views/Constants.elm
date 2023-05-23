@@ -1,8 +1,11 @@
 module Views.Constants exposing
     ( ColorMode(..)
     , Colors
+    , ScoreLevel(..)
+    , WordListSortOrder(..)
     , bodyFont
     , headerFont
+    , nextSortOrder
     , rotate
     , themeColors
     )
@@ -180,3 +183,35 @@ bodyFont =
         , Font.typeface "Helvetica Neue"
         , Font.sansSerif
         ]
+
+
+type WordListSortOrder
+    = Found
+    | Alpha
+    | Length
+
+
+nextSortOrder : WordListSortOrder -> WordListSortOrder
+nextSortOrder order =
+    case order of
+        Found ->
+            Alpha
+
+        Alpha ->
+            Length
+
+        Length ->
+            Found
+
+
+type ScoreLevel
+    = ScoreLevel0
+    | ScoreLevel1
+    | ScoreLevel2
+    | ScoreLevel3
+    | ScoreLevel4
+    | ScoreLevel5
+    | ScoreLevel6
+    | ScoreLevel7
+    | ScoreLevel8
+    | ScoreLevel9

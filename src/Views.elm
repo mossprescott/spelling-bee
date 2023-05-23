@@ -1,7 +1,6 @@
 module Views exposing
     ( Size
     , WordEntry
-    , WordListSortOrder(..)
     , assignColors
     , colorModeButton
     , controlButton
@@ -11,6 +10,7 @@ module Views exposing
     , hintNone
     , hintWarning
     , hive
+    , languageButton
     , loadingHeader
     , mainLayout
     , puzzleFooter
@@ -31,6 +31,7 @@ import Element.Region as Region
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
+import Language exposing (Language(..), Strings)
 import Puzzle exposing (User, UserInfo, isPangram, wordScore)
 import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
@@ -128,8 +129,8 @@ mainLayout header game words friends footer desiredColumnWidth actualViewport =
             ]
 
 
-colorModeButton : Colors -> ColorMode -> (ColorMode -> msg) -> Element msg
-colorModeButton colors colorMode handle =
+colorModeButton : Colors -> Strings -> ColorMode -> (ColorMode -> msg) -> Element msg
+colorModeButton colors strings colorMode handle =
     lightweightButton colors
         (if colorMode == Day then
             "☼"
@@ -137,12 +138,20 @@ colorModeButton colors colorMode handle =
          else
             "☾"
         )
-        "Color Mode"
+        strings.colorModeDescription
         (Just <| handle <| Views.Constants.rotate colorMode)
 
 
-puzzleHeader : Colors -> String -> Maybe msg -> Maybe msg -> Element msg
-puzzleHeader colors date previousMsg nextMsg =
+languageButton : Colors -> Strings -> Language -> (Language -> msg) -> Element msg
+languageButton colors strings language handle =
+    lightweightButton colors
+        strings.icon
+        strings.languageDescription
+        (Just <| handle <| Language.rotate language)
+
+
+puzzleHeader : Colors -> Strings -> String -> Maybe msg -> Maybe msg -> Element msg
+puzzleHeader colors strings date previousMsg nextMsg =
     column
         [ centerX
         ]
@@ -150,15 +159,15 @@ puzzleHeader colors date previousMsg nextMsg =
             [ spacing 10
             , Font.size 16
             ]
-            [ lightweightButton colors "←" "Previous Puzzle" previousMsg
-            , lightweightButton colors "→" "Next Puzzle" nextMsg
+            [ lightweightButton colors "←" strings.previousPuzzleDescription previousMsg
+            , lightweightButton colors "→" strings.nextPuzzleDescription nextMsg
             , el [] (text date)
             ]
         ]
 
 
-loadingHeader : Maybe String -> Element msg
-loadingHeader msg =
+loadingHeader : Strings -> Maybe String -> Element msg
+loadingHeader strings msg =
     column
         [ headerFont
         , centerX
@@ -168,18 +177,18 @@ loadingHeader msg =
             [ Font.bold
             , Font.size 24
             ]
-            (text "Spelling Bee")
+            (text <| strings.titleLabel)
         , el
             [ Font.light
             , Font.size 16
             , Font.italic
             ]
-            (text <| Maybe.withDefault "loading…" msg)
+            (text <| Maybe.withDefault strings.loadingLabel msg)
         ]
 
 
-puzzleFooter : Colors -> String -> Element msg
-puzzleFooter colors editor =
+puzzleFooter : Colors -> Strings -> String -> Element msg
+puzzleFooter colors strings editor =
     column
         [ centerX
         , spacing 5
@@ -189,16 +198,18 @@ puzzleFooter colors editor =
             [ Font.light
             , Font.size 16
             ]
-            (text <| "Puzzle by " ++ editor)
+            (text <| strings.editorLabel editor)
         , row
             [ Font.light
             , Font.size 16
             ]
-            [ text "for the "
+            [ text <| strings.attributionLabel
             , link
                 []
                 { url = "https://www.nytimes.com/puzzles/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "New York Times")
+                , label =
+                    el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ]
+                        (text <| strings.nytLabel)
                 }
             ]
         , el [] (text " ") -- space
@@ -206,11 +217,13 @@ puzzleFooter colors editor =
             [ Font.light
             , Font.size 16
             ]
-            [ text "Source and docs "
+            [ text <| strings.sourceLabel
             , link
                 []
                 { url = "https://github.com/mossprescott/spelling-bee"
-                , label = el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ] (text "here")
+                , label =
+                    el [ Font.italic, mouseOver [ Font.color colors.activeHilite ] ]
+                        (text <| strings.hereLabel)
                 }
             ]
         ]
@@ -218,8 +231,8 @@ puzzleFooter colors editor =
 
 {-| View with the score "thermo" along with the name of the highest level that's been reached.
 -}
-scoreBanner : Colors -> Int -> Int -> Bool -> Element msg
-scoreBanner colors maxScore score hasAllPangrams =
+scoreBanner : Colors -> Strings -> Int -> Int -> Bool -> Element msg
+scoreBanner colors strings maxScore score hasAllPangrams =
     column
         [ spacing 3
         , centerX
@@ -228,7 +241,7 @@ scoreBanner colors maxScore score hasAllPangrams =
             [ Font.size 16
             , centerX
             ]
-            (text <| scoreRating maxScore score)
+            (text <| strings.scoreLabel <| scoreRating maxScore score)
         , scoreThermo (mainThermoStyle colors) maxScore score hasAllPangrams
         ]
 
@@ -432,8 +445,8 @@ type FriendEntry
     | Group Bool
 
 
-friendList : Colors -> User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
-friendList colors user friends decorations maxScore groupScore groupHasAllPangrams =
+friendList : Colors -> Strings -> User -> Dict User UserInfo -> Dict User ( Color, Int ) -> Int -> Int -> Bool -> Element msg
+friendList colors strings user friends decorations maxScore groupScore groupHasAllPangrams =
     let
         sortedFriends =
             friends
@@ -504,7 +517,7 @@ friendList colors user friends decorations maxScore groupScore groupHasAllPangra
     column
         [ spacing 10
         ]
-        [ text "Friends"
+        [ text <| strings.friendsLabel
         , Element.table
             [ width fill
             , spacing 9
@@ -529,7 +542,7 @@ friendList colors user friends decorations maxScore groupScore groupHasAllPangra
                                                 n
 
                                             Group _ ->
-                                                "Group"
+                                                strings.groupLabel
                                 in
                                 el (playerFontStyles entry) <| text name
                   }
@@ -612,25 +625,6 @@ assignColors colors users =
         |> Dict.fromList
 
 
-type WordListSortOrder
-    = Found
-    | Alpha
-    | Length
-
-
-nextSortOrder : WordListSortOrder -> WordListSortOrder
-nextSortOrder order =
-    case order of
-        Found ->
-            Alpha
-
-        Alpha ->
-            Length
-
-        Length ->
-            Found
-
-
 type alias WordEntry =
     { word : String
     , foundByUser : Bool
@@ -642,8 +636,8 @@ type alias WordEntry =
 Each word may or may not be shown as found by the user, with zero or more
 decorations indicating which other users also found it.
 -}
-wordList : Colors -> WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
-wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
+wordList : Colors -> Strings -> WordListSortOrder -> (WordListSortOrder -> msg) -> Int -> List WordEntry -> Bool -> Element msg
+wordList colors strings sortOrder resortMsg minimumWordsPerColumn words allKnown =
     let
         -- Sort words according to the preferred ordering. Note: the words are already alpha sorted in
         -- the Dict, and List.sort is stable, so these sorts are on top of that.
@@ -707,24 +701,8 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
 
                     else
                         Nothing
-
-                numMsg =
-                    case ( found, totalMay ) of
-                        ( x, Just y ) ->
-                            String.fromInt x ++ " of " ++ String.fromInt y
-
-                        ( x, Nothing ) ->
-                            String.fromInt x
-
-                wordsStr =
-                    case Maybe.withDefault found totalMay of
-                        1 ->
-                            "word"
-
-                        _ ->
-                            "words"
             in
-            "Found " ++ numMsg ++ " " ++ wordsStr
+            strings.foundLabel found totalMay
     in
     column
         [ spacing 5
@@ -737,18 +715,8 @@ wordList colors sortOrder resortMsg minimumWordsPerColumn words allKnown =
                 (text foundMsg)
             , lightweightButton
                 colors
-                -- TODO: chronological
-                (case sortOrder of
-                    Found ->
-                        "f↑"
-
-                    Alpha ->
-                        "a↑"
-
-                    Length ->
-                        "l↑"
-                )
-                "Sort Words"
+                (strings.sortLabel sortOrder)
+                strings.sortDescription
                 (Just <| resortMsg <| nextSortOrder sortOrder)
             ]
         , row

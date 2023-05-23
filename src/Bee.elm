@@ -18,6 +18,7 @@ import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
 import Http
+import Language exposing (Language(..), Strings, stringsFor)
 import List
 import Puzzle
     exposing
@@ -40,7 +41,6 @@ import Views
     exposing
         ( Size
         , WordEntry
-        , WordListSortOrder(..)
         , assignColors
         , colorModeButton
         , controlButton
@@ -50,6 +50,7 @@ import Views
         , hintNone
         , hintWarning
         , hive
+        , languageButton
         , loadingHeader
         , mainLayout
         , puzzleFooter
@@ -57,7 +58,12 @@ import Views
         , scoreBanner
         , wordList
         )
-import Views.Constants as Constants exposing (ColorMode(..), bodyFont)
+import Views.Constants as Constants
+    exposing
+        ( ColorMode(..)
+        , WordListSortOrder(..)
+        , bodyFont
+        )
 
 
 
@@ -89,6 +95,7 @@ type alias Model =
     , wordSort : WordListSortOrder
     , viewport : Size
     , colorMode : ColorMode
+    , language : Language
     }
 
 
@@ -116,6 +123,7 @@ startModel flags =
          else
             Day
         )
+        EN
 
 
 init : PuzzleBackend Msg -> Flags -> ( Model, Cmd Msg )
@@ -138,6 +146,7 @@ type Msg
     | Submit
     | ShowPuzzle PuzzleId
     | SetColorMode ColorMode
+    | SetLanguage Language
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
@@ -162,6 +171,10 @@ subscriptions _ =
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
 update backend msg model =
+    let
+        strings =
+            stringsFor model.language
+    in
     case model.data of
         Nothing ->
             case msg of
@@ -256,6 +269,13 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                SetLanguage language ->
+                    ( { model
+                        | language = language
+                      }
+                    , Cmd.none
+                    )
+
                 ReceivePuzzle (Result.Ok newData) ->
                     let
                         newLetters =
@@ -294,7 +314,7 @@ update backend msg model =
                         Nothing ->
                             -- When not authenticated, hackishly update the state locally:
                             ( { model
-                                | data = Maybe.map (tempLocalInsertFound word) model.data
+                                | data = Maybe.map (tempLocalInsertFound strings word) model.data
                                 , input = []
                                 , message = JustFound word
                               }
@@ -302,10 +322,14 @@ update backend msg model =
                             )
 
                 ReceiveWord (Result.Err err) ->
+                    -- Note: if an error happens here, the word passed local validation,
+                    -- so we assume that it's just not part of the solution. However, if
+                    -- something goes wrong on the server or network it gets trapped here,
+                    -- and a couple of times that's been pretty confusing.
                     ( Debug.log (Debug.toString err)
                         { model
                             | input = []
-                            , message = Warning "Not in word list"
+                            , message = Warning strings.notInWordListMessage
                         }
                     , Cmd.none
                     )
@@ -350,12 +374,12 @@ initialFocusTask model =
         Cmd.none
 
 
-tempLocalInsertFound : String -> PuzzleResponse -> PuzzleResponse
-tempLocalInsertFound word data =
+tempLocalInsertFound : Strings -> String -> PuzzleResponse -> PuzzleResponse
+tempLocalInsertFound strings word data =
     { data
         | found =
             ( word
-            , data.user |> Maybe.map List.singleton |> Maybe.withDefault [ "Guest" ]
+            , data.user |> Maybe.map List.singleton |> Maybe.withDefault [ strings.guestLabel ]
             )
                 :: data.found
     }
@@ -367,8 +391,8 @@ beeView model =
         colors =
             Constants.themeColors model.colorMode
 
-        modeButton =
-            colorModeButton colors model.colorMode SetColorMode
+        strings =
+            Language.stringsFor model.language
 
         decorateHeader hdr =
             Element.row
@@ -376,7 +400,8 @@ beeView model =
                 , Element.spacing 10
                 ]
                 [ hdr
-                , modeButton
+                , colorModeButton colors strings model.colorMode SetColorMode
+                , languageButton colors strings model.language SetLanguage
                 ]
 
         body =
@@ -394,12 +419,13 @@ beeView model =
                         hdr =
                             puzzleHeader
                                 colors
+                                strings
                                 data.puzzle.displayDate
                                 (Maybe.map ShowPuzzle data.previousPuzzleId)
                                 (Maybe.map ShowPuzzle data.nextPuzzleId)
 
                         ftr =
-                            puzzleFooter colors data.puzzle.editor
+                            puzzleFooter colors strings data.puzzle.editor
 
                         gameView =
                             Element.column
@@ -409,7 +435,7 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner colors data.hints.maxScore (apparentScore user data) localHasAllPangrams
+                                  scoreBanner colors strings data.hints.maxScore (apparentScore user data) localHasAllPangrams
                                 , whenLatest <| entered colors Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
@@ -438,17 +464,17 @@ beeView model =
                                         , Element.spacing 25
                                         , Element.padding 10
                                         ]
-                                        [ controlButton colors "✗" "Delete" Delete (not <| List.isEmpty model.input)
-                                        , controlButton colors "🤷" "Shuffle" Shuffle True
-                                        , controlButton colors "✓" "Submit" Submit (not <| List.isEmpty model.input)
+                                        [ controlButton colors "✗" strings.deleteDescription Delete (not <| List.isEmpty model.input)
+                                        , controlButton colors "🤷" strings.shuffleDescription Shuffle True
+                                        , controlButton colors "✓" strings.submitDescription Submit (not <| List.isEmpty model.input)
                                         ]
                                 ]
 
                         wordsView =
-                            wordList colors model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
+                            wordList colors strings model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
 
                         friendsView =
-                            friendList colors user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
+                            friendList colors strings user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
 
                         foundMunged =
                             List.map
@@ -503,8 +529,8 @@ beeView model =
                                                 Nothing ->
                                                     0
                                     in
-                                    ( "Guest"
-                                    , Dict.insert "Guest" (UserInfo localScore localHasPangram localHasAllPangrams) data.friends
+                                    ( strings.guestLabel
+                                    , Dict.insert strings.guestLabel (UserInfo localScore localHasPangram localHasAllPangrams) data.friends
                                     , GroupInfo localScore False
                                     )
 
@@ -526,7 +552,7 @@ beeView model =
                                 JustFound _ ->
                                     Nothing
                     in
-                    mainLayout (loadingHeader msg) Element.none Element.none Element.none Element.none
+                    mainLayout (loadingHeader strings msg) Element.none Element.none Element.none Element.none
     in
     Element.layout
         [ bodyFont
@@ -546,6 +572,10 @@ desiredColumnWidth =
 -}
 inputError : Model -> Maybe String
 inputError model =
+    let
+        strings =
+            stringsFor model.language
+    in
     case model.data of
         Nothing ->
             Nothing
@@ -555,7 +585,7 @@ inputError model =
                 Just ""
 
             else if List.any ((==) (String.fromList model.input) << Tuple.first) data.found then
-                Just "Already found"
+                Just strings.alreadyFoundMessage
 
             else
                 let
@@ -564,27 +594,13 @@ inputError model =
                             List.filter (\c -> c /= data.puzzle.centerLetter && not (List.member c data.puzzle.outerLetters)) model.input
                 in
                 if Set.size wrong > 0 then
-                    let
-                        pluralized =
-                            if Set.size wrong == 1 then
-                                "Wrong letter"
-
-                            else
-                                "Wrong letters"
-
-                        wrongStr =
-                            wrong
-                                |> Set.toList
-                                |> List.intersperse ' '
-                                |> String.fromList
-                    in
-                    Just <| pluralized ++ ": " ++ wrongStr
+                    Just <| strings.wrongLettersMessage wrong
 
                 else if List.length model.input < 4 then
-                    Just "Too short"
+                    Just <| strings.tooShortMessage
 
                 else if List.all ((/=) data.puzzle.centerLetter) model.input then
-                    Just "Missing center letter"
+                    Just <| strings.missingCenterLetterMessage
 
                 else
                     Nothing

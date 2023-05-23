@@ -7,7 +7,6 @@ import Bee exposing (Model, beeView, startModel)
 import Browser
 import Html exposing (Html)
 import Puzzle exposing (..)
-import Views exposing (WordListSortOrder(..))
 
 
 main : Program () () ()
