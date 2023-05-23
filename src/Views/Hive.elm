@@ -132,11 +132,15 @@ animateMove to state =
         new =
             destination to
     in
-    state
-        |> Animator.interrupt
-            [ Animator.event Animator.quickly (Between old new)
-            , Animator.event Animator.quickly new
-            ]
+    if old == new then
+        state
+
+    else
+        state
+            |> Animator.interrupt
+                [ Animator.event Animator.quickly (Between old new)
+                , Animator.event Animator.quickly new
+                ]
 
 
 
