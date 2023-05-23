@@ -114,7 +114,7 @@ type alias Model =
 
 type Message
     = None
-    | Warning String
+    | Warning String -- FIXME: string translated strings here is goofy when the language is changed
     | JustFound String
 
 
