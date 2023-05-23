@@ -1,23 +1,27 @@
 module Views.Hive exposing
     ( Position
     , PositionState
+    , ShuffleOp(..)
     , animateMove
     , animator
     , atCenter
     , hive
+    , shuffle
     , startPositions
     )
 
 {-| Relative position of a letter, in terms of rows and colums.
 -}
 
-import Animator exposing (Timeline, arriveSmoothly, at, leaveLate, leaveSmoothly, upcoming)
+import Animator exposing (Timeline, arriveSmoothly, at, leaveSmoothly, upcoming)
 import Animator.Css exposing (center, transform, xy)
 import Array exposing (Array)
 import Element exposing (..)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Random exposing (Generator)
+import Random.List
 import Set exposing (Set)
 import Views.Constants exposing (Colors)
 
@@ -118,17 +122,94 @@ destination pos =
             pos
 
 
-animateMove : Position -> Position -> Timeline Position -> Timeline Position
-animateMove old new =
-    Animator.interrupt
-        [ Animator.event Animator.quickly (Between (destination old) (destination new))
-        , Animator.event Animator.quickly (destination new)
-        ]
+animateMove : Position -> Timeline Position -> Timeline Position
+animateMove to state =
+    let
+        old =
+            destination (Animator.current state)
+
+        -- just to be safe
+        new =
+            destination to
+    in
+    state
+        |> Animator.interrupt
+            [ Animator.event Animator.quickly (Between old new)
+            , Animator.event Animator.quickly new
+            ]
+
+
+
+-- Shuffling
 
 
 atCenter : Timeline Position -> Bool
 atCenter =
     upcoming Center
+
+
+{-| Operations you can select from to influence what kind of re-arrangements happen, and how often.
+-}
+type ShuffleOp
+    = SwapOuters -- Swap two random non-center letters
+    | SwapWithCenter -- Swap the center letter (wherever it is) with a random other letter
+    | RandomizeOuter -- Re-arrange all the non-center letters, leaving the center letter in place
+    | RestoreCenter -- Move the center letter back to the center position
+
+
+shuffle : ShuffleOp -> PositionState -> Generator PositionState
+shuffle op state =
+    let
+        -- Current position occupied by the letter at the given index. Note: bogus default
+        -- here in case of a bad index
+        currentByIdx idx =
+            Array.get idx state |> Maybe.map (Animator.current >> destination) |> Maybe.withDefault Center
+    in
+    case op of
+        SwapOuters ->
+            -- TODO
+            Random.constant state
+
+        SwapWithCenter ->
+            Random.int 1 6
+                |> Random.map
+                    (\idx ->
+                        state
+                            |> Array.indexedMap
+                                (\i ->
+                                    if i == 0 then
+                                        animateMove (currentByIdx idx)
+
+                                    else if i == idx then
+                                        animateMove (currentByIdx 0)
+
+                                    else
+                                        identity
+                                )
+                    )
+
+        RandomizeOuter ->
+            let
+                updateOuters : List Int -> PositionState
+                updateOuters newOuters =
+                    Array.append
+                        (Array.slice 0 1 state)
+                        (List.map2
+                            (\pos idx -> animateMove (currentByIdx idx) pos)
+                            (Array.toList state |> List.drop 1)
+                            newOuters
+                            |> Array.fromList
+                        )
+            in
+            Random.List.shuffle (List.range 1 6) |> Random.map updateOuters
+
+        RestoreCenter ->
+            -- TODO
+            Random.constant state
+
+
+
+-- View
 
 
 hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char

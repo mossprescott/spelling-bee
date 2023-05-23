@@ -66,8 +66,11 @@ import Views.Constants as Constants
 import Views.Hive
     exposing
         ( Position
+        , PositionState
+        , ShuffleOp(..)
         , atCenter
         , hive
+        , shuffle
         , startPositions
         )
 
@@ -151,7 +154,7 @@ type Msg
     | Edit String
     | Delete
     | Shuffle
-    | SwapPositions ( Int, Int )
+    | Shuffled PositionState
     | ResortWords WordListSortOrder
     | Submit
     | ShowPuzzle PuzzleId
@@ -251,96 +254,16 @@ update backend msg model =
                     )
 
                 Shuffle ->
-                    let
-                        centerAtCenter =
-                            model.letters
-                                |> Array.get 0
-                                |> Maybe.map atCenter
-                                |> Maybe.withDefault False
-
-                        -- Swap the center letter (wherever it is) with a randomly-chosen
-                        -- other letter:
-                        genAwayFromCenter : Generator ( Int, Int )
-                        genAwayFromCenter =
-                            Random.int 1 6 |> Random.map (Tuple.pair 0)
-
-                        -- Swap the center letter with whichever other letter is currently
-                        -- occupying the center spot:
-                        genBackToCenter : Generator ( Int, Int )
-                        genBackToCenter =
-                            Random.constant
-                                ( 0
-                                , model.letters
-                                    |> Array.toList
-                                    |> List.indexedMap Tuple.pair
-                                    |> List.filter (Tuple.second >> atCenter)
-                                    |> List.head
-                                    |> Maybe.map Tuple.first
-                                    |> Maybe.withDefault 1
-                                )
-
-                        genSwapOuter : Generator ( Int, Int )
-                        genSwapOuter =
-                            let
-                                -- Pick two values randomly from a list of at least 2
-                                uniform2 : a -> a -> List a -> Generator ( a, a )
-                                uniform2 x y rest =
-                                    Random.uniform x (y :: rest)
-                                        |> Random.andThen
-                                            (\v1 ->
-                                                let
-                                                    g : Generator a
-                                                    g =
-                                                        if v1 == x then
-                                                            Random.uniform y rest
-
-                                                        else if v1 == y then
-                                                            Random.uniform x rest
-
-                                                        else
-                                                            Random.uniform x (y :: List.filter ((/=) v1) rest)
-                                                in
-                                                Random.map (\v2 -> ( v1, v2 )) g
-                                            )
-                            in
-                            uniform2 1 2 (List.range 3 6)
-
-                        join : Generator (Generator a) -> Generator a
-                        join g =
-                            g |> Random.andThen identity
-
-                        gen : Generator ( Int, Int )
-                        gen =
-                            join <|
-                                if centerAtCenter then
-                                    Random.weighted
-                                        ( 1, genAwayFromCenter )
-                                        [ ( 3, genSwapOuter ) ]
-
-                                else
-                                    Random.weighted
-                                        ( 1, genBackToCenter )
-                                        []
-                    in
                     ( model
-                    , Random.generate SwapPositions gen
+                    , Random.weighted
+                        ( 1, SwapWithCenter )
+                        [ ( 1, RandomizeOuter ) ]
+                        |> Random.andThen (\op -> shuffle op model.letters)
+                        |> Random.generate Shuffled
                     )
 
-                SwapPositions ( idx1, idx2 ) ->
-                    let
-                        swap : Int -> Int -> (Array (Timeline Position) -> Array (Timeline Position))
-                        swap src dst positions =
-                            Maybe.map2
-                                (\ps pd ->
-                                    ps
-                                        |> Views.Hive.animateMove (Animator.current ps) (Animator.current pd)
-                                        |> (\p -> Array.set src p positions)
-                                )
-                                (positions |> Array.get src)
-                                (positions |> Array.get dst)
-                                |> Maybe.withDefault positions
-                    in
-                    ( { model | letters = (swap idx1 idx2 << swap idx2 idx1) model.letters }
+                Shuffled letters ->
+                    ( { model | letters = letters }
                     , Cmd.none
                     )
 
