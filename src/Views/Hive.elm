@@ -68,11 +68,11 @@ coords scale pos =
                     coords scale p2
 
                 offsetRatio =
-                    0
+                    -0.1
             in
             -- Start with the midpoint, then offset perpendicularly:
             { x = ((c1.x + c2.x) / 2) + ((c2.y - c1.y) * offsetRatio)
-            , y = ((c1.y + c2.y) / 2) - ((c2.x - c1.x) * offsetRatio)
+            , y = ((c1.y + c2.y) / 2) + ((c2.x - c1.x) * offsetRatio)
             }
 
 
