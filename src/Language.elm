@@ -261,7 +261,7 @@ esStrings =
             (\ls -> "Letras incorrectas: " ++ ls)
     , tooShortMessage = "Demasiado corto"
     , missingCenterLetterMessage = "No hay letra central"
-    , notInWordListMessage = "No hay en lista de palabras"
+    , notInWordListMessage = "No en la lista de palabras"
 
     -- Accessibility:
     , previousPuzzleDescription = "Rompecabezas anterior"
