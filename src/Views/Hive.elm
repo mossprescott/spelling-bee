@@ -134,24 +134,42 @@ atCenter =
 hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char
 hive colors center letters used =
     let
+        slide =
+            True
+
+        fade =
+            True
+
+        scale =
+            65
+
         -- xy transform seems to be some fixed curve:
-        position : Animator.Css.Attribute Position
+        position : Maybe (Animator.Css.Attribute Position)
         position =
-            transform (coords 65 >> xy)
+            if slide then
+                Just (transform (coords scale >> xy))
+
+            else
+                Nothing
 
         -- layer a fade on top of the slide:
-        visibility : Animator.Css.Attribute Position
+        visibility : Maybe (Animator.Css.Attribute Position)
         visibility =
-            Animator.Css.opacity <|
-                \pos ->
-                    case pos of
-                        Between _ _ ->
-                            -- Fade out very quickly, to just suggest the destination:
-                            at 0 |> leaveSmoothly 0 |> arriveSmoothly 0.7
+            if fade then
+                Just <|
+                    Animator.Css.opacity <|
+                        \pos ->
+                            case pos of
+                                Between _ _ ->
+                                    -- Fade out very quickly, to just suggest the destination:
+                                    at 0 |> leaveSmoothly 0 |> arriveSmoothly 0.7
 
-                        _ ->
-                            -- Fade in very late:
-                            at 1 |> leaveSmoothly 0.7 |> arriveSmoothly 0
+                                _ ->
+                                    -- Fade in very late:
+                                    at 1 |> leaveSmoothly 0.7 |> arriveSmoothly 0
+
+            else
+                Nothing
 
         accentColor letter =
             if letter == center then
@@ -160,13 +178,25 @@ hive colors center letters used =
             else
                 colors.secondaryTint
 
-        geometryStyle =
+        geometryStyle pos =
+            let
+                c =
+                    coords scale pos
+            in
             [ Html.Attributes.style "width" "54px"
             , Html.Attributes.style "height" "54px"
             , Html.Attributes.style "position" "absolute"
-            , Html.Attributes.style "left" "65px"
-            , Html.Attributes.style "top" "65px"
             ]
+                ++ (if slide then
+                        [ Html.Attributes.style "left" "65px"
+                        , Html.Attributes.style "top" "65px"
+                        ]
+
+                    else
+                        [ Html.Attributes.style "left" (String.fromFloat (65 + c.x) ++ "px")
+                        , Html.Attributes.style "top" (String.fromFloat (65 + c.y) ++ "px")
+                        ]
+                   )
 
         accentStyle letter =
             if Set.member letter used then
@@ -193,8 +223,8 @@ hive colors center letters used =
         cell : ( Char, Timeline Position ) -> Html Char
         cell ( letter, pos ) =
             Animator.Css.div pos
-                [ position, visibility ]
-                (geometryStyle
+                (List.filterMap identity [ position, visibility ])
+                (geometryStyle (destination <| Animator.current pos)
                     ++ [ Html.Attributes.style "font-size" "32px"
                        , Html.Attributes.style "border-radius" "5px"
                        , Html.Attributes.style "border-style" "solid"
