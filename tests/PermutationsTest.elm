@@ -7,6 +7,9 @@ import Test exposing (..)
 import Views.Permutation as P exposing (Permutation)
 
 
+{-| Note: these tests assume the values are distinct, even though the type might actually
+behave correctly even if they're not. It's just easier to test thay way.
+-}
 testPermutation : Test
 testPermutation =
     let
@@ -24,6 +27,38 @@ testPermutation =
                     (P.init x y rest |> P.toList)
                         |> Expect.equalLists (x :: y :: rest)
             ]
+        , describe "swap" <|
+            [ fuzz2 (Fuzz.intRange 0 4) (Fuzz.intRange 0 4) "correctly swaps with expected indices (x -> y)" <|
+                \idx1 idx2 ->
+                    let
+                        swapped =
+                            digits |> P.swap idx1 idx2
+
+                        old1 =
+                            digits |> at idx1
+
+                        new2 =
+                            swapped |> at idx2
+                    in
+                    new2 |> Expect.equal old1
+            , fuzz2 (Fuzz.intRange 0 4) (Fuzz.intRange 0 4) "correctly swaps with expected indices (x <- y)" <|
+                \idx1 idx2 ->
+                    let
+                        swapped =
+                            digits |> P.swap idx1 idx2
+
+                        old2 =
+                            digits |> at idx2
+
+                        new1 =
+                            swapped |> at idx1
+                    in
+                    new1 |> Expect.equal old2
+            , fuzz2 Fuzz.int Fuzz.int "retains values" <|
+                \idx1 idx2 ->
+                    P.swap idx1 idx2 digits
+                        |> sameValues digits
+            ]
         , describe "moveToHead"
             [ fuzz (Fuzz.oneOfValues <| P.toList digits) "moves the requested value" <|
                 \val ->
@@ -31,11 +66,7 @@ testPermutation =
                         |> P.toList
                         |> List.head
                         |> Expect.equal (Just val)
-            , fuzz (Fuzz.oneOfValues <| P.toList digits) "doesn't duplicate values" <|
-                \val ->
-                    P.moveToHead val digits
-                        |> noDupes
-            , fuzz (Fuzz.oneOfValues <| P.toList digits) "doesn't lose values" <|
+            , fuzz (Fuzz.oneOfValues <| P.toList digits) "retains values" <|
                 \val ->
                     P.moveToHead val digits
                         |> sameValues digits
@@ -47,17 +78,22 @@ testPermutation =
         ]
 
 
-noDupes : Permutation Int -> Expectation
-noDupes perm =
-    let
-        vals =
-            perm |> P.toList
+at : Int -> Permutation a -> Maybe a
+at idx perm =
+    perm |> P.toList |> List.drop idx |> List.head
 
-        uniqueVals =
-            vals |> Set.fromList
-    in
-    Set.size uniqueVals
-        |> Expect.equal (List.length vals)
+
+
+-- noDupes : Permutation Int -> Expectation
+-- noDupes perm =
+--     let
+--         vals =
+--             perm |> P.toList
+--         uniqueVals =
+--             vals |> Set.fromList
+--     in
+--     Set.size uniqueVals
+--         |> Expect.equal (List.length vals)
 
 
 sameValues : Permutation comparable -> Permutation comparable -> Expectation

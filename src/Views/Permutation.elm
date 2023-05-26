@@ -20,6 +20,9 @@ import Random exposing (Generator)
   - each value always appears exactly once after any sequence of operations
   - therefore, the length is always the same
 
+Note: it's assumed that the values are distinct; if there are any duplicates,
+it might or might not behave correctly.
+
 -}
 type Permutation a
     = Permutation { values : Array a, saved : a }
@@ -48,8 +51,24 @@ toList (Permutation p) =
 
 -}
 swap : Int -> Int -> Permutation a -> Permutation a
-swap idx1 idx2 perm =
-    Debug.todo "swap"
+swap idx1 idx2 (Permutation p) =
+    let
+        fixIndex =
+            modBy (Array.length p.values)
+
+        fixed1 =
+            fixIndex idx1
+
+        fixed2 =
+            fixIndex idx2
+    in
+    Permutation
+        { values =
+            p.values
+                |> Array.set fixed1 (safeGet fixed2 p)
+                |> Array.set fixed2 (safeGet fixed1 p)
+        , saved = p.saved
+        }
 
 
 {-| A completely random re-ordering of the values.
