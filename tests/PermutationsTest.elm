@@ -2,6 +2,7 @@ module PermutationsTest exposing (..)
 
 import Expect exposing (Expectation)
 import Fuzz
+import Random
 import Set
 import Test exposing (..)
 import Views.Permutation as P exposing (Permutation)
@@ -58,6 +59,25 @@ testPermutation =
                 \idx1 idx2 ->
                     P.swap idx1 idx2 digits
                         |> sameValues digits
+            ]
+        , describe "shuffle"
+            [ fuzz Fuzz.int "retains values" <|
+                \seed ->
+                    let
+                        ( shuffled, _ ) =
+                            Random.step (P.shuffle digits) (Random.initialSeed seed)
+                    in
+                    shuffled
+                        |> sameValues digits
+            , fuzz Fuzz.int "always shuffles" <|
+                \seed ->
+                    let
+                        ( shuffled, _ ) =
+                            Random.step (P.shuffle digits) (Random.initialSeed seed)
+                    in
+                    (P.toList shuffled == P.toList digits)
+                        |> Expect.equal False
+                        |> Expect.onFail "no change after shuffle"
             ]
         , describe "moveToHead"
             [ fuzz (Fuzz.oneOfValues <| P.toList digits) "moves the requested value" <|

@@ -2,6 +2,7 @@ module Views.Permutation exposing
     ( Permutation
     , init
     , moveToHead
+    , shuffle
     , swap
     , toList
     )
@@ -12,6 +13,7 @@ module Views.Permutation exposing
 import Array exposing (Array)
 import Dict exposing (values)
 import Random exposing (Generator)
+import Random.List
 
 
 {-| A collection of values which supports only re-ordering.
@@ -74,8 +76,16 @@ swap idx1 idx2 (Permutation p) =
 {-| A completely random re-ordering of the values.
 -}
 shuffle : Permutation a -> Generator (Permutation a)
-shuffle perm =
-    Debug.todo "shuffle"
+shuffle (Permutation p) =
+    let
+        go =
+            Random.List.shuffle (Array.toList p.values)
+                |> Random.map
+                    (\vals ->
+                        Permutation { values = Array.fromList vals, saved = p.saved }
+                    )
+    in
+    go
 
 
 {-| Move the provided value to the first postition. If the value wasn't already present, the
