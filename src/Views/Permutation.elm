@@ -1,5 +1,6 @@
 module Views.Permutation exposing
     ( Permutation
+    , choose
     , definitely
     , init
     , moveToHead
@@ -14,9 +15,9 @@ module Views.Permutation exposing
 
 import Array exposing (Array)
 import Dict exposing (values)
-import Html exposing (a)
 import Random exposing (Generator)
 import Random.Array
+import Random.List
 
 
 {-| A collection of values which supports only re-ordering.
@@ -148,6 +149,16 @@ definitely gen x =
                 else
                     Random.constant x1
             )
+
+
+{-| Select several values at random (and in random order), from a list of possible values.
+See `Random.uniform`. If the list of possible values contains less than the number of
+requested values, the result contains them all.
+-}
+choose : Int -> List a -> Generator (List a)
+choose count values =
+    Random.List.shuffle values
+        |> Random.map (List.take count)
 
 
 
