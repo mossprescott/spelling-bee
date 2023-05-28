@@ -13,7 +13,7 @@ module Views.Permutation exposing
 import Array exposing (Array)
 import Dict exposing (values)
 import Random exposing (Generator)
-import Random.List
+import Random.Array
 
 
 {-| A collection of values which supports only re-ordering.
@@ -76,16 +76,13 @@ swap idx1 idx2 (Permutation p) =
 {-| A completely random re-ordering of the values.
 -}
 shuffle : Permutation a -> Generator (Permutation a)
-shuffle (Permutation p) =
+shuffle =
     let
-        go =
-            Random.List.shuffle (Array.toList p.values)
-                |> Random.map
-                    (\vals ->
-                        Permutation { values = Array.fromList vals, saved = p.saved }
-                    )
+        try : Permutation a -> Generator (Permutation a)
+        try (Permutation p) =
+            Random.Array.shuffle p.values |> Random.map (\vals -> Permutation { values = vals, saved = p.saved })
     in
-    go
+    definitely try
 
 
 {-| Move the provided value to the first postition. If the value wasn't already present, the
@@ -114,3 +111,19 @@ moveToHead x (Permutation p) =
 safeGet : Int -> { values : Array a, saved : a } -> a
 safeGet idx { values, saved } =
     values |> Array.get idx |> Maybe.withDefault saved
+
+
+{-| Apply a generator, based on a preceding value; if the result is the same value,
+re-apply the generator until a new value is produced.
+-}
+definitely : (a -> Generator a) -> a -> Generator a
+definitely gen x =
+    gen x
+        |> Random.andThen
+            (\x1 ->
+                if x1 == x then
+                    definitely gen x
+
+                else
+                    Random.constant x1
+            )

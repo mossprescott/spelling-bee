@@ -60,22 +60,27 @@ testPermutation =
                     P.swap idx1 idx2 digits
                         |> sameValues digits
             ]
-        , describe "shuffle"
+        , let
+            -- A smaller list makes it more likely we'll randomly get the same order back
+            smallDigits =
+                P.init 1 2 [ 3 ]
+          in
+          describe "shuffle"
             [ fuzz Fuzz.int "retains values" <|
                 \seed ->
                     let
                         ( shuffled, _ ) =
-                            Random.step (P.shuffle digits) (Random.initialSeed seed)
+                            Random.step (P.shuffle smallDigits) (Random.initialSeed seed)
                     in
                     shuffled
-                        |> sameValues digits
+                        |> sameValues smallDigits
             , fuzz Fuzz.int "always shuffles" <|
                 \seed ->
                     let
                         ( shuffled, _ ) =
-                            Random.step (P.shuffle digits) (Random.initialSeed seed)
+                            Random.step (P.shuffle smallDigits) (Random.initialSeed seed)
                     in
-                    (P.toList shuffled == P.toList digits)
+                    (P.toList shuffled == P.toList smallDigits)
                         |> Expect.equal False
                         |> Expect.onFail "no change after shuffle"
             ]
