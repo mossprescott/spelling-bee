@@ -1,7 +1,9 @@
 module Views.Permutation exposing
     ( Permutation
+    , definitely
     , init
     , moveToHead
+    , rotate
     , shuffle
     , swap
     , toList
@@ -12,6 +14,7 @@ module Views.Permutation exposing
 
 import Array exposing (Array)
 import Dict exposing (values)
+import Html exposing (a)
 import Random exposing (Generator)
 import Random.Array
 
@@ -73,16 +76,31 @@ swap idx1 idx2 (Permutation p) =
         }
 
 
-{-| A completely random re-ordering of the values.
+{-| Rotate one or more values so that each value takes the position of the previous one
+(including wrapping around).
 -}
-shuffle : Permutation a -> Generator (Permutation a)
-shuffle =
-    let
-        try : Permutation a -> Generator (Permutation a)
-        try (Permutation p) =
-            Random.Array.shuffle p.values |> Random.map (\vals -> Permutation { values = vals, saved = p.saved })
-    in
-    definitely try
+rotate : List Int -> Permutation a -> Permutation a
+rotate idxs perm =
+    case idxs of
+        firstIdx :: rest ->
+            let
+                loop : List Int -> Permutation a -> Permutation a
+                loop is p =
+                    case is of
+                        i :: j :: more ->
+                            loop (j :: more) (swap i j p)
+
+                        [ lastIdx ] ->
+                            swap lastIdx firstIdx p
+
+                        [] ->
+                            -- Degenerate case, but this happens if the input has just one index
+                            p
+            in
+            loop rest perm
+
+        [] ->
+            perm
 
 
 {-| Move the provided value to the first postition. If the value wasn't already present, the
@@ -105,12 +123,15 @@ moveToHead x (Permutation p) =
 
 
 
--- Internal
+-- Random
 
 
-safeGet : Int -> { values : Array a, saved : a } -> a
-safeGet idx { values, saved } =
-    values |> Array.get idx |> Maybe.withDefault saved
+{-| A completely random re-ordering of the values.
+-}
+shuffle : Permutation a -> Generator (Permutation a)
+shuffle (Permutation p) =
+    Random.Array.shuffle p.values
+        |> Random.map (\vals -> Permutation { values = vals, saved = p.saved })
 
 
 {-| Apply a generator, based on a preceding value; if the result is the same value,
@@ -127,3 +148,12 @@ definitely gen x =
                 else
                     Random.constant x1
             )
+
+
+
+-- Internal
+
+
+safeGet : Int -> { values : Array a, saved : a } -> a
+safeGet idx { values, saved } =
+    values |> Array.get idx |> Maybe.withDefault saved

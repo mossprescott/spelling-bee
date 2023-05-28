@@ -2,7 +2,8 @@ module PermutationsTest exposing (..)
 
 import Expect exposing (Expectation)
 import Fuzz
-import Random
+import Html exposing (a)
+import Random exposing (Generator)
 import Set
 import Test exposing (..)
 import Views.Permutation as P exposing (Permutation)
@@ -60,29 +61,23 @@ testPermutation =
                     P.swap idx1 idx2 digits
                         |> sameValues digits
             ]
-        , let
-            -- A smaller list makes it more likely we'll randomly get the same order back
-            smallDigits =
-                P.init 1 2 [ 3 ]
-          in
-          describe "shuffle"
-            [ fuzz Fuzz.int "retains values" <|
-                \seed ->
+        , describe "rotate"
+            [ test "does nothing with empty list" <|
+                \_ ->
                     let
-                        ( shuffled, _ ) =
-                            Random.step (P.shuffle smallDigits) (Random.initialSeed seed)
+                        rotated =
+                            P.rotate [] digits
                     in
-                    shuffled
-                        |> sameValues smallDigits
-            , fuzz Fuzz.int "always shuffles" <|
-                \seed ->
+                    P.toList rotated
+                        |> Expect.equal (P.toList digits)
+            , fuzz (Fuzz.intRange -5 15) "does nothing with singleton" <|
+                \idx ->
                     let
-                        ( shuffled, _ ) =
-                            Random.step (P.shuffle smallDigits) (Random.initialSeed seed)
+                        rotated =
+                            P.rotate [ idx ] digits
                     in
-                    (P.toList shuffled == P.toList smallDigits)
-                        |> Expect.equal False
-                        |> Expect.onFail "no change after shuffle"
+                    P.toList rotated
+                        |> Expect.equal (P.toList digits)
             ]
         , describe "moveToHead"
             [ fuzz (Fuzz.oneOfValues <| P.toList digits) "moves the requested value" <|
@@ -99,6 +94,30 @@ testPermutation =
                 \badVal ->
                     P.moveToHead badVal digits
                         |> sameOrder digits
+            ]
+        , let
+            -- A smaller list makes it more likely we'll randomly get the same order back
+            smallDigits =
+                P.init 1 2 [ 3 ]
+          in
+          describe "shuffle"
+            [ fuzz Fuzz.int "retains values" <|
+                \seed ->
+                    let
+                        shuffled =
+                            run (P.shuffle smallDigits) seed
+                    in
+                    shuffled
+                        |> sameValues smallDigits
+            , fuzz Fuzz.int "always shuffles (when `definitely` is applied)" <|
+                \seed ->
+                    let
+                        shuffled =
+                            run (P.definitely P.shuffle smallDigits) seed
+                    in
+                    (P.toList shuffled == P.toList smallDigits)
+                        |> Expect.equal False
+                        |> Expect.onFail "no change after shuffle"
             ]
         ]
 
@@ -131,3 +150,8 @@ sameOrder : Permutation comparable -> Permutation comparable -> Expectation
 sameOrder p1 p2 =
     (p1 |> P.toList)
         |> Expect.equalLists (p2 |> P.toList)
+
+
+run : Generator a -> Int -> a
+run gen seed =
+    Random.initialSeed seed |> Random.step gen |> Tuple.first
