@@ -2,6 +2,7 @@ module Views.Permutation exposing
     ( Permutation
     , choose
     , definitely
+    , get
     , init
     , moveToHead
     , rotate
@@ -47,6 +48,13 @@ init first second rest =
 toList : Permutation a -> List a
 toList (Permutation p) =
     Array.toList p.values
+
+
+{-| Look up an element by index, treating the index as modulo the number of values.
+-}
+get : Int -> Permutation a -> a
+get idx (Permutation p) =
+    safeGet (modBy (Array.length p.values) idx) p
 
 
 {-| Swap two values by index. Indexes are treated as modulo the number of values.
@@ -104,7 +112,7 @@ rotate idxs perm =
             perm
 
 
-{-| Move the provided value to the first postition. If the value wasn't already present, the
+{-| Move the provided value to the first position. If the value wasn't already present, the
 collection is unchanged.
 -}
 moveToHead : a -> Permutation a -> Permutation a
