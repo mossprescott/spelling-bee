@@ -78,6 +78,14 @@ testPermutation =
                     in
                     P.toList rotated
                         |> Expect.equal (P.toList digits)
+            , test "rotates 3 values" <|
+                \_ ->
+                    P.toList (P.rotate [ 0, 2, 3 ] digits)
+                        |> Expect.equalLists [ 3, 2, 4, 1, 5 ]
+            , fuzz (fuzzIdxs 10 10) "retains values" <|
+                \idxs ->
+                    P.rotate idxs digits
+                        |> sameValues digits
             ]
         , describe "moveToHead"
             [ fuzz (Fuzz.oneOfValues <| P.toList digits) "moves the requested value" <|
@@ -155,3 +163,13 @@ sameOrder p1 p2 =
 run : Generator a -> Int -> a
 run gen seed =
     Random.initialSeed seed |> Random.step gen |> Tuple.first
+
+
+{-| A Fuzzer for lists of indexes (as used by `Permutation.rotate`). The list will have between 0
+and maxCount indexes in it, and each index will be between 0 and maxCount.
+-}
+fuzzIdxs : Int -> Int -> Fuzz.Fuzzer (List Int)
+fuzzIdxs maxIndex maxCount =
+    Fuzz.map2 (\seed count -> run (P.choose count (List.range 0 maxIndex)) seed)
+        Fuzz.int
+        (Fuzz.intRange 0 maxCount)
