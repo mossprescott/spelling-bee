@@ -2,7 +2,6 @@ module Views.Hive exposing
     ( Position
     , PositionState
     , ShuffleOp
-    , animateMove
     , animator
     , applyPositions
     , centerAtCenter
@@ -15,23 +14,56 @@ module Views.Hive exposing
 {-| Relative position of a letter, in terms of rows and colums.
 -}
 
-import Animator exposing (Timeline, arriveSmoothly, at, leaveSmoothly, upcoming)
+import Animator exposing (Animator, Timeline, arriveEarly, arriveSmoothly, at, leaveSmoothly, upcomingWith)
 import Animator.Css exposing (center, transform, xy)
-import Array exposing (Array)
+import Array
 import Element exposing (..)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Random exposing (Generator)
-import Random.List
 import Set exposing (Set)
 import Views.Constants exposing (Colors)
+import Views.Permutation as Permutation exposing (Permutation)
 
 
+options =
+    { -- Letters slide (linearly) from old to new position
+      slide = True
+
+    -- Letters fade out quickly, then back in quickly ()
+    , fade =
+        True
+
+    -- How much of the time is in the "faded" phase, or something like that
+    , smoothness = 0.8
+
+    -- A very slight adjustment for each animating letter to look a little less robotic.
+    -- Disabled for now because it's not very effective, applying as it does only to the
+    -- fade and not the more noticable slide.
+    , stagger = 0.0
+
+    -- The time for *half* of the animation:
+    , speed = Animator.quickly
+    }
+
+
+{-| Possible positions for a letter, ignoring animation states.
+-}
 type Position
     = Center
     | Outer Int -- 0 at the top-left; clockwise after that
-    | Between Position Position -- Midpoint of the animation from one position to another
+
+
+{-| Possible positions for a letter, including the halfway state of animating a letter to a new location.
+-}
+type DynamicPosition
+    = LetterAt Position
+    | LetterBetween Position Position
+
+
+
+-- | Between Position Position -- Midpoint of the animation from one position to another
 
 
 {-| Where the rest of the letters start.
@@ -41,13 +73,13 @@ outerPositions =
     List.range 0 6 |> List.map Outer
 
 
-coords : Float -> Position -> { x : Float, y : Float }
+coords : Float -> DynamicPosition -> { x : Float, y : Float }
 coords scale pos =
     case pos of
-        Center ->
+        LetterAt Center ->
             { x = 0, y = 0 }
 
-        Outer index ->
+        LetterAt (Outer index) ->
             Array.fromList
                 [ { x = -0.5 * scale, y = -1 * scale }
                 , { x = 0.5 * scale, y = -1 * scale }
@@ -61,13 +93,13 @@ coords scale pos =
                 -- bogus
                 |> Maybe.withDefault { x = -0.5 * scale, y = -1 * scale }
 
-        Between p1 p2 ->
+        LetterBetween p1 p2 ->
             let
                 c1 =
-                    coords scale p1
+                    coords scale (LetterAt p1)
 
                 c2 =
-                    coords scale p2
+                    coords scale (LetterAt p2)
 
                 offsetRatio =
                     -0.1
@@ -78,91 +110,44 @@ coords scale pos =
             }
 
 
-{-| State of all of the letters.
-
-Note: For what we're currently doing, `Timeline (Array Position)` would work, and might be simpler
-to deal with?
-
+{-| State of all of the letters, which is a permutation of the sequence of positions, which
+may be in a state of anuimation from one sequence to the next.
 -}
-type alias PositionState =
-    Array (Timeline Position)
+type PositionState
+    = At (Permutation Position)
+    | Between (Permutation Position) (Permutation Position)
 
 
 startPositions : PositionState
 startPositions =
-    (Center :: outerPositions)
-        |> List.map Animator.init
-        |> Array.fromList
+    At (Permutation.init Center (Outer 0) (List.drop 1 outerPositions))
 
 
-animator : (model -> PositionState) -> (PositionState -> model -> model) -> Animator.Animator model
+animator : (model -> Timeline PositionState) -> (Timeline PositionState -> model -> model) -> Animator model
 animator getState setState =
-    let
-        watch : Int -> Animator.Animator model -> Animator.Animator model
-        watch idx =
-            let
-                -- getter: assume idx is valid, otherwise just return a meaningless value
-                get : model -> Timeline Position
-                get model =
-                    getState model
-                        |> Array.get idx
-                        |> Maybe.withDefault (Animator.init Center)
-
-                -- setter: assume idx is valid, otherwise the value is discarded
-                set : Timeline Position -> model -> model
-                set newLetters model =
-                    getState model
-                        |> Array.set idx newLetters
-                        |> (\s -> setState s model)
-            in
-            Animator.Css.watching get set
-    in
-    List.foldl watch Animator.animator (List.range 0 6)
-
-
-destination : Position -> Position
-destination pos =
-    case pos of
-        Between _ new ->
-            new
-
-        _ ->
-            pos
-
-
-animateMove : Position -> Timeline Position -> Timeline Position
-animateMove to state =
-    let
-        old =
-            destination (Animator.current state)
-
-        -- just to be safe
-        new =
-            destination to
-    in
-    if old == new then
-        state
-
-    else
-        state
-            |> Animator.interrupt
-                [ Animator.event Animator.quickly (Between old new)
-                , Animator.event Animator.quickly new
-                ]
+    Animator.animator
+        |> Animator.Css.watching
+            getState
+            setState
 
 
 
 -- Shuffling
 
 
-atCenter : Timeline Position -> Bool
-atCenter =
-    upcoming Center
+centerAtCenter : Timeline PositionState -> Bool
+centerAtCenter =
+    upcomingWith (stateToPerm >> Permutation.toList >> List.head >> Maybe.map ((==) Center) >> Maybe.withDefault True)
 
 
-centerAtCenter : PositionState -> Bool
-centerAtCenter state =
-    Array.get 0 state |> Maybe.map atCenter |> Maybe.withDefault True
+stateToPerm : PositionState -> Permutation Position
+stateToPerm state =
+    case state of
+        At pos ->
+            pos
+
+        Between _ dst ->
+            dst
 
 
 {-| Operations you can select from to influence what kind of re-arrangements happen, and how often.
@@ -178,127 +163,115 @@ type alias ShuffleOp =
     }
 
 
-shuffle : ShuffleOp -> Array Position -> Generator (Array Position)
-shuffle op state =
+shuffle : ShuffleOp -> Permutation Position -> Generator (Permutation Position)
+shuffle op =
     let
-        -- Position occupied by the letter at the given index. Note: bogus default
-        -- here in case of a bad index
-        currentByIdx : Int -> Array Position -> Position
-        currentByIdx idx ps =
-            Array.get idx ps |> Maybe.withDefault Center
-
-        doSwaps : Int -> Array Position -> Generator (Array Position)
-        doSwaps swaps ps =
-            if swaps > 0 then
-                Random.map2
-                    (\idx1 idx2 ->
-                        Array.indexedMap
-                            (\idx p ->
-                                if idx == idx1 then
-                                    currentByIdx idx2 ps
-
-                                else if idx == idx2 then
-                                    currentByIdx idx1 ps
-
-                                else
-                                    p
-                            )
-                            ps
-                    )
-                    (Random.int 0 6)
-                    (Random.int 0 6)
-                    |> Random.andThen (doSwaps (swaps - 1))
+        -- Note: a single swap involves 2 digits, and so on. And if somebody asks for
+        -- zero swaps, that would be an infinite loop, so just assume they meant one.
+        numDigits =
+            if op.swaps < 1 then
+                2
 
             else
-                Random.constant ps
+                op.swaps + 1
 
-        fixCenter : Array Position -> Array Position
-        fixCenter ps =
+        doSwaps : Permutation Position -> Generator (Permutation Position)
+        doSwaps state =
+            Permutation.choose numDigits (List.range 0 6)
+                |> Random.map (\idxs -> Permutation.rotate idxs state)
+
+        doRestore : Permutation Position -> Permutation Position
+        doRestore =
             if op.restoreCenter then
-                case Array.get 0 ps of
-                    Just (Outer idx) ->
-                        Array.append
-                            (Array.fromList [ Center ])
-                            (Array.map
-                                (\p ->
-                                    if p == Center then
-                                        Outer idx
-
-                                    else
-                                        p
-                                )
-                                (Array.slice 1 7 ps)
-                            )
-
-                    _ ->
-                        ps
+                Permutation.moveToHead Center
 
             else
-                ps
+                identity
     in
-    state |> doSwaps op.swaps |> Random.map fixCenter
+    Permutation.definitely (doSwaps >> Random.map doRestore)
 
 
-currentPositions : PositionState -> Array Position
+{-| Based on the current state, possibly in the middle of animation, get the positions of each
+letter, as they will be when any animation is complete.
+-}
+currentPositions : Timeline PositionState -> Permutation Position
 currentPositions =
-    Array.map (Animator.current >> destination)
+    Animator.current >> stateToPerm
 
 
-applyPositions : Array Position -> PositionState -> PositionState
+{-| Start animating the letters to a set of new positions.
+-}
+applyPositions : Permutation Position -> Timeline PositionState -> Timeline PositionState
 applyPositions newPositions state =
-    List.map2
-        (\p t -> animateMove p t)
-        (Array.toList newPositions)
-        (Array.toList state)
-        |> Array.fromList
+    state
+        |> Animator.interrupt
+            [ Animator.event options.speed (Between (currentPositions state) newPositions)
+            , Animator.event options.speed (At newPositions)
+            ]
 
 
 
 -- View
 
 
-hive : Colors -> Char -> List ( Char, Timeline Position ) -> Set Char -> Element Char
-hive colors center letters used =
+hive : Colors -> Char -> List Char -> Timeline PositionState -> Set Char -> Element Char
+hive colors center letters state used =
     let
-        options =
-            { -- Letters slide (linearly) from old to new position
-              slide = True
-
-            -- Letters fade out quickly, then back in quickly ()
-            , fade =
-                True
-
-            -- How much of the time is in the "faded" phase, or something like that
-            , smoothness = 0.8
-            }
-
         scale =
             65
 
+        letterState : Int -> PositionState -> DynamicPosition
+        letterState idx ps =
+            case ps of
+                At pos ->
+                    LetterAt
+                        (Permutation.get idx pos)
+
+                Between src dst ->
+                    let
+                        p1 =
+                            Permutation.get idx src
+
+                        p2 =
+                            Permutation.get idx dst
+                    in
+                    if p1 == p2 then
+                        LetterAt p2
+
+                    else
+                        LetterBetween p1 p2
+
         -- xy transform seems to be some fixed curve:
-        position : Maybe (Animator.Css.Attribute Position)
-        position =
+        position : Int -> Maybe (Animator.Css.Attribute PositionState)
+        position idx =
             if options.slide then
-                Just (transform (coords scale >> xy))
+                Just (transform (letterState idx >> coords scale >> xy))
 
             else
                 Nothing
 
         -- layer a fade on top of the slide:
-        visibility : Maybe (Animator.Css.Attribute Position)
-        visibility =
+        visibility : Int -> Maybe (Animator.Css.Attribute PositionState)
+        visibility idx =
+            -- let
+            --     foo : PositionState -> Animator.Movement
+            --     foo ps =
+            -- in
             if options.fade then
                 Just <|
                     Animator.Css.opacity <|
-                        \pos ->
-                            case pos of
-                                Between _ _ ->
+                        \ps ->
+                            case letterState idx ps of
+                                LetterBetween _ _ ->
                                     -- Fade out very quickly, to just suggest the destination:
                                     at 0 |> leaveSmoothly 0 |> arriveSmoothly options.smoothness
 
-                                _ ->
+                                LetterAt _ ->
                                     -- Fade in very late:
-                                    at 1 |> leaveSmoothly options.smoothness |> arriveSmoothly 0
+                                    at 1
+                                        |> leaveSmoothly options.smoothness
+                                        |> arriveSmoothly 0
+                                        |> arriveEarly (options.stagger * toFloat idx)
 
             else
                 Nothing
@@ -310,10 +283,11 @@ hive colors center letters used =
             else
                 colors.secondaryTint
 
+        geometryStyle : Position -> List (Html.Attribute msg)
         geometryStyle pos =
             let
                 c =
-                    coords scale pos
+                    coords scale (LetterAt pos)
             in
             [ Html.Attributes.style "width" "54px"
             , Html.Attributes.style "height" "54px"
@@ -329,6 +303,13 @@ hive colors center letters used =
                         , Html.Attributes.style "top" (String.fromFloat (65 + c.y) ++ "px")
                         ]
                    )
+
+        fixedAppearanceStyle =
+            [ Html.Attributes.style "font-size" "32px"
+            , Html.Attributes.style "border-radius" "5px"
+            , Html.Attributes.style "border-style" "solid"
+            , Html.Attributes.style "border-width" "3px"
+            ]
 
         accentStyle letter =
             if Set.member letter used then
@@ -352,19 +333,16 @@ hive colors center letters used =
             , Html.Attributes.style "cursor" "pointer"
             ]
 
-        cell : ( Char, Timeline Position ) -> Html Char
-        cell ( letter, pos ) =
-            Animator.Css.div pos
-                (List.filterMap identity [ position, visibility ])
-                (geometryStyle (destination <| Animator.current pos)
-                    ++ [ Html.Attributes.style "font-size" "32px"
-                       , Html.Attributes.style "border-radius" "5px"
-                       , Html.Attributes.style "border-style" "solid"
-                       , Html.Attributes.style "border-width" "3px"
-                       ]
-                    ++ accentStyle letter
-                    ++ centerStyle
-                    ++ buttonStyle letter
+        cell : Int -> Char -> Html Char
+        cell idx letter =
+            Animator.Css.div state
+                (List.filterMap identity [ position idx, visibility idx ])
+                (geometryStyle (currentPositions state |> Permutation.get idx)
+                    ++ (fixedAppearanceStyle
+                            ++ accentStyle letter
+                            ++ centerStyle
+                            ++ buttonStyle letter
+                       )
                 )
                 [ Html.div [] [ Html.text (String.fromChar letter) ] ]
     in
@@ -387,7 +365,9 @@ hive colors center letters used =
                 , Html.Attributes.style "position" "relative"
                 ]
             <|
-                List.map cell letters
+                -- Note: stagger is applied to all letters, animating or not. Which is currently
+                -- moot anyway.
+                List.indexedMap cell letters
 
 
 

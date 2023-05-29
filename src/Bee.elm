@@ -66,6 +66,7 @@ import Views.Constants as Constants
 import Views.Hive
     exposing
         ( Position
+        , PositionState
         , ShuffleOp
         , applyPositions
         , currentPositions
@@ -73,6 +74,7 @@ import Views.Hive
         , shuffle
         , startPositions
         )
+import Views.Permutation exposing (Permutation)
 
 
 
@@ -99,7 +101,7 @@ type alias Model =
     { data : Maybe PuzzleResponse
 
     -- display position for each letter, center first, then outers in the order from the puzzle
-    , letters : Array (Timeline Position)
+    , letters : Timeline PositionState
 
     -- , used: Array (Timeline Bool)
     , input : List Char
@@ -124,7 +126,7 @@ a medium-sized phone.
 startModel : Flags -> Model
 startModel flags =
     Model Nothing
-        startPositions
+        (Animator.init startPositions)
         []
         Nothing
         None
@@ -160,7 +162,7 @@ type Msg
     | SetLanguage Language
     | ShowPuzzle PuzzleId
     | DoShuffle ShuffleOp -- Note: broken out as a step so you can see which op was chosen in the debugger
-    | Shuffled (Array Position)
+    | Shuffled (Permutation Position)
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
@@ -255,12 +257,18 @@ update backend msg model =
                     )
 
                 Shuffle ->
+                    let
+                        -- Uniformly 1-to-5, meaning usually 3 or less:
+                        numSwaps =
+                            Random.int 1 5
+
+                        -- Put the required letter back in the middle (at least) 1/3 of the time:
+                        restoreCenter =
+                            Random.weighted ( 2, False ) [ ( 1, True ) ]
+                    in
                     ( model
                     , Random.generate DoShuffle <|
-                        Random.map2
-                            ShuffleOp
-                            (Random.int 1 5)
-                            (Random.weighted ( 2, False ) [ ( 1, True ) ])
+                        Random.map2 ShuffleOp numSwaps restoreCenter
                     )
 
                 DoShuffle op ->
@@ -314,7 +322,7 @@ update backend msg model =
                     let
                         newLetters =
                             if newData.id /= data.id then
-                                startPositions
+                                Animator.init startPositions
 
                             else
                                 model.letters
@@ -485,10 +493,12 @@ beeView model =
                                                 |> Maybe.withDefault hintNone
                                 , hive colors
                                     data.puzzle.centerLetter
-                                    (List.map2 Tuple.pair
-                                        (data.puzzle.centerLetter :: data.puzzle.outerLetters)
-                                        (Array.toList model.letters)
-                                    )
+                                    -- (List.map2 Tuple.pair
+                                    --     (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                    --     (Array.toList model.letters)
+                                    -- )
+                                    (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                    model.letters
                                     (Set.fromList model.input)
                                     |> Element.map Type
                                 , whenLatest <|
