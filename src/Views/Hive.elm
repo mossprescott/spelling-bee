@@ -159,6 +159,11 @@ type alias ShuffleOp =
     }
 
 
+{-| Generate new positions, using the requested number swaps, followed by optionally moving
+the required letter back to its normal position. Note: the new position is always different
+than the previous position, but sometimes restoring the center has the effect of undoing
+one of the swaps, and sometimes it looks like an additional swap.
+-}
 shuffle : ShuffleOp -> Permutation Position -> Generator (Permutation Position)
 shuffle op =
     let
