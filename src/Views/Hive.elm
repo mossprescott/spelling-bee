@@ -44,7 +44,7 @@ options =
     , stagger = 0.0
 
     -- The time for *half* of the animation:
-    , speed = Animator.quickly
+    , speed = Animator.veryQuickly
     }
 
 
