@@ -62,10 +62,6 @@ type DynamicPosition
     | LetterBetween Position Position
 
 
-
--- | Between Position Position -- Midpoint of the animation from one position to another
-
-
 {-| Where the rest of the letters start.
 -}
 outerPositions : List Position
@@ -111,7 +107,7 @@ coords scale pos =
 
 
 {-| State of all of the letters, which is a permutation of the sequence of positions, which
-may be in a state of anuimation from one sequence to the next.
+may be in a state of animation from one sequence to the next.
 -}
 type PositionState
     = At (Permutation Position)
@@ -253,10 +249,6 @@ hive colors center letters state used =
         -- layer a fade on top of the slide:
         visibility : Int -> Maybe (Animator.Css.Attribute PositionState)
         visibility idx =
-            -- let
-            --     foo : PositionState -> Animator.Movement
-            --     foo ps =
-            -- in
             if options.fade then
                 Just <|
                     Animator.Css.opacity <|
