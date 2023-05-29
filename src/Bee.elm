@@ -258,9 +258,9 @@ update backend msg model =
 
                 Shuffle ->
                     let
-                        -- Uniformly 1-to-5, meaning usually 3 or less:
+                        -- Uniformly 1-to-6, meaning usually 3 or less:
                         numSwaps =
-                            Random.int 1 5
+                            Random.int 1 6
 
                         -- Put the required letter back in the middle (at least) 1/3 of the time:
                         restoreCenter =
