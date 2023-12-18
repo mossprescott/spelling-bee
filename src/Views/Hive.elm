@@ -6,6 +6,7 @@ module Views.Hive exposing
     , applyPositions
     , centerAtCenter
     , currentPositions
+    , displayHive
     , hive
     , shuffle
     , startPositions
@@ -215,8 +216,23 @@ applyPositions newPositions state =
 -- View
 
 
-hive : Colors -> Char -> List Char -> Timeline PositionState -> Set Char -> Element Char
-hive colors center letters state used =
+{-| Hive which shows the letters,
+-}
+hive : (Char -> msg) -> Colors -> Char -> List Char -> Timeline PositionState -> Set Char -> Element msg
+hive handleClick colors center letters state used =
+    hiveImpl colors center letters state (Just handleClick) used
+
+
+{-| Hive which shows the letters but doesn't respond to clicks. All the letters are displayed in
+the default, "enabled" state.
+-}
+displayHive : Colors -> Char -> List Char -> Timeline PositionState -> Element msg
+displayHive colors center letters state =
+    hiveImpl colors center letters state Nothing Set.empty
+
+
+hiveImpl : Colors -> Char -> List Char -> Timeline PositionState -> Maybe (Char -> msg) -> Set Char -> Element msg
+hiveImpl colors center letters state handleClickMaybe used =
     let
         scale =
             65
@@ -319,26 +335,31 @@ hive colors center letters state used =
                 , Html.Attributes.style "border-color" "#00000000"
                 ]
 
-        centerStyle =
+        commonStyle =
             [ Html.Attributes.style "display" "flex"
             , Html.Attributes.style "align-items" "center"
             , Html.Attributes.style "justify-content" "center"
-            ]
-
-        buttonStyle letter =
-            [ Html.Events.onClick letter
             , Html.Attributes.style "cursor" "pointer"
             ]
 
-        cell : Int -> Char -> Html Char
+        clickStyle letter =
+            case handleClickMaybe of
+                Just handleClick ->
+                    [ Html.Events.onClick (handleClick letter)
+                    ]
+
+                Nothing ->
+                    []
+
+        cell : Int -> Char -> Html msg
         cell idx letter =
             Animator.Css.div state
                 (List.filterMap identity [ position idx, visibility idx ])
                 (geometryStyle (currentPositions state |> Permutation.get idx)
                     ++ (fixedAppearanceStyle
                             ++ accentStyle letter
-                            ++ centerStyle
-                            ++ buttonStyle letter
+                            ++ commonStyle
+                            ++ clickStyle letter
                        )
                 )
                 [ Html.div [] [ Html.text (String.fromChar letter) ] ]

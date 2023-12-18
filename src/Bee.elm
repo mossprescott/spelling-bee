@@ -9,7 +9,6 @@ port module Bee exposing
     )
 
 import Animator exposing (Timeline)
-import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -70,6 +69,7 @@ import Views.Hive
         , ShuffleOp
         , applyPositions
         , currentPositions
+        , displayHive
         , hive
         , shuffle
         , startPositions
@@ -491,16 +491,22 @@ beeView model =
                                                 |> List.head
                                                 |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive colors
-                                    data.puzzle.centerLetter
-                                    -- (List.map2 Tuple.pair
-                                    --     (data.puzzle.centerLetter :: data.puzzle.outerLetters)
-                                    --     (Array.toList model.letters)
-                                    -- )
-                                    (data.puzzle.centerLetter :: data.puzzle.outerLetters)
-                                    model.letters
-                                    (Set.fromList model.input)
-                                    |> Element.map Type
+                                , case data.puzzle.expiration of
+                                    Just _ ->
+                                        hive
+                                            Type
+                                            colors
+                                            data.puzzle.centerLetter
+                                            (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                            model.letters
+                                            (Set.fromList model.input)
+
+                                    Nothing ->
+                                        displayHive
+                                            colors
+                                            data.puzzle.centerLetter
+                                            (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                            model.letters
                                 , whenLatest <|
                                     Element.row
                                         [ Element.centerX
