@@ -7,6 +7,19 @@
   <script charset="utf-8" src="spellingbee.js"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap" rel="stylesheet">
+
+  <!-- Arguably "correct", but not very attractive with the current design: -->
+  <!-- <meta name="theme-color" content="rgb(47, 143, 191)" /> -->
+
+  <!--
+    Setting both light and dark colors works for the most part, on iPhone (iOS 17.2):
+    - it looks right when the page loads
+    - if the page is loaded in light mode, and then the mode is switched, it reacts
+    - if the page is loaded in dark mode, then the theme color is stuck on black
+  -->
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+
 </head>
 
 <body>
