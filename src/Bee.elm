@@ -8,7 +8,7 @@ port module Bee exposing
     , startModel
     )
 
-import Array exposing (Array)
+import Animator exposing (Timeline)
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -23,7 +23,6 @@ import List
 import Puzzle
     exposing
         ( GroupInfo
-        , Puzzle
         , PuzzleBackend
         , PuzzleId
         , PuzzleResponse
@@ -34,9 +33,9 @@ import Puzzle
         , wordScore
         )
 import Random
-import Random.List exposing (shuffle)
 import Set
 import Task
+import Time
 import Views
     exposing
         ( Size
@@ -49,7 +48,6 @@ import Views
         , hintFound
         , hintNone
         , hintWarning
-        , hive
         , languageButton
         , loadingHeader
         , mainLayout
@@ -64,6 +62,19 @@ import Views.Constants as Constants
         , WordListSortOrder(..)
         , bodyFont
         )
+import Views.Hive
+    exposing
+        ( Position
+        , PositionState
+        , ShuffleOp
+        , applyPositions
+        , currentPositions
+        , displayHive
+        , hive
+        , shuffle
+        , startPositions
+        )
+import Views.Permutation exposing (Permutation)
 
 
 
@@ -88,7 +99,11 @@ type alias Flags =
 
 type alias Model =
     { data : Maybe PuzzleResponse
-    , letters : Array Char -- the letters of the puzzle, in an arbitrary order for display
+
+    -- display position for each letter, center first, then outers in the order from the puzzle
+    , letters : Timeline PositionState
+
+    -- , used: Array (Timeline Bool)
     , input : List Char
     , selectedPuzzleId : Maybe PuzzleId
     , message : Message
@@ -101,7 +116,7 @@ type alias Model =
 
 type Message
     = None
-    | Warning String
+    | Warning String -- FIXME: string translated strings here is goofy when the language is changed
     | JustFound String
 
 
@@ -111,7 +126,7 @@ a medium-sized phone.
 startModel : Flags -> Model
 startModel flags =
     Model Nothing
-        Array.empty
+        (Animator.init startPositions)
         []
         Nothing
         None
@@ -141,20 +156,22 @@ type Msg
     | Edit String
     | Delete
     | Shuffle
-    | Shuffled (Array Char)
-    | ResortWords WordListSortOrder
     | Submit
-    | ShowPuzzle PuzzleId
+    | ResortWords WordListSortOrder
     | SetColorMode ColorMode
     | SetLanguage Language
+    | ShowPuzzle PuzzleId
+    | DoShuffle ShuffleOp -- Note: broken out as a step so you can see which op was chosen in the debugger
+    | Shuffled (Permutation Position)
     | ReceivePuzzle (Result Http.Error PuzzleResponse)
     | ReceiveWord (Result Http.Error String)
     | ReceiveNewViewportSize { width : Int, height : Int }
+    | Tick Time.Posix
     | NoOp String
 
 
-subscriptions : model -> Sub Msg
-subscriptions _ =
+subscriptions : Model -> Sub Msg
+subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> ReceiveNewViewportSize { width = w, height = h })
         , receiveIsDarkPort
@@ -166,7 +183,14 @@ subscriptions _ =
                     else
                         Day
             )
+        , animator
+            |> Animator.toSubscription Tick model
         ]
+
+
+animator : Animator.Animator Model
+animator =
+    Views.Hive.animator .letters (\newLetters model -> { model | letters = newLetters })
 
 
 update : PuzzleBackend Msg -> Msg -> Model -> ( Model, Cmd Msg )
@@ -181,7 +205,6 @@ update backend msg model =
                 ReceivePuzzle (Result.Ok data) ->
                     ( { model
                         | data = Just data
-                        , letters = startLetters data.puzzle
                       }
                     , initialFocusTask model
                     )
@@ -234,10 +257,29 @@ update backend msg model =
                     )
 
                 Shuffle ->
-                    ( model, Random.generate (Array.fromList >> Shuffled) ((Array.toList >> shuffle) model.letters) )
+                    let
+                        -- Uniformly 1-to-6, meaning usually 3 or less:
+                        numSwaps =
+                            Random.int 1 6
 
-                Shuffled letters ->
-                    ( { model | letters = letters }, Cmd.none )
+                        -- Put the required letter back in the middle (at least) 1/3 of the time:
+                        restoreCenter =
+                            Random.weighted ( 2, False ) [ ( 1, True ) ]
+                    in
+                    ( model
+                    , Random.generate DoShuffle <|
+                        Random.map2 ShuffleOp numSwaps restoreCenter
+                    )
+
+                DoShuffle op ->
+                    ( model
+                    , Random.generate Shuffled (shuffle op (currentPositions model.letters))
+                    )
+
+                Shuffled newPositions ->
+                    ( { model | letters = applyPositions newPositions model.letters }
+                    , Cmd.none
+                    )
 
                 ResortWords order ->
                     ( { model | wordSort = order }
@@ -280,7 +322,7 @@ update backend msg model =
                     let
                         newLetters =
                             if newData.id /= data.id then
-                                startLetters newData.puzzle
+                                Animator.init startPositions
 
                             else
                                 model.letters
@@ -339,22 +381,13 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                Tick newTime ->
+                    ( Animator.update newTime animator model
+                    , Cmd.none
+                    )
+
                 NoOp str ->
                     ( Debug.log str model, Cmd.none )
-
-
-startLetters : Puzzle -> Array Char
-startLetters puzzle =
-    let
-        outer =
-            Array.fromList puzzle.outerLetters
-    in
-    Array.append
-        (Array.slice 0 3 outer)
-        (Array.append
-            (Array.fromList [ puzzle.centerLetter ])
-            (Array.slice 3 6 outer)
-        )
 
 
 {-| For the benefit of desktop users, start with the input field focused, based on there
@@ -431,6 +464,8 @@ beeView model =
                             Element.column
                                 [ centerX
                                 , Element.spacing 10
+
+                                -- , Element.explain Debug.todo
                                 ]
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
@@ -456,8 +491,22 @@ beeView model =
                                                 |> List.head
                                                 |> Maybe.map (hintFound colors)
                                                 |> Maybe.withDefault hintNone
-                                , hive colors data.puzzle.centerLetter model.letters
-                                    |> Element.map Type
+                                , case data.puzzle.expiration of
+                                    Just _ ->
+                                        hive
+                                            Type
+                                            colors
+                                            data.puzzle.centerLetter
+                                            (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                            model.letters
+                                            (Set.fromList model.input)
+
+                                    Nothing ->
+                                        displayHive
+                                            colors
+                                            data.puzzle.centerLetter
+                                            (data.puzzle.centerLetter :: data.puzzle.outerLetters)
+                                            model.letters
                                 , whenLatest <|
                                     Element.row
                                         [ Element.centerX

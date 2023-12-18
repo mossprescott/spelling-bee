@@ -9,7 +9,6 @@ module Views exposing
     , hintFound
     , hintNone
     , hintWarning
-    , hive
     , languageButton
     , loadingHeader
     , mainLayout
@@ -24,7 +23,6 @@ import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
@@ -33,6 +31,7 @@ import Html.Events
 import Json.Decode as Decode
 import Language exposing (Language(..), Strings)
 import Puzzle exposing (User, UserInfo, isPangram, wordScore)
+import Set exposing (Set)
 import Views.Constants exposing (..)
 import Views.Thermo exposing (..)
 
@@ -317,65 +316,6 @@ hintFound colors entry =
         [ word colors entry
         , text <| "+" ++ String.fromInt (wordScore entry.word)
         ]
-
-
-hive : Colors -> Char -> Array Char -> Element Char
-hive colors center letters =
-    let
-        cell letter =
-            el
-                [ Background.color
-                    (if letter == center then
-                        colors.primaryTint
-
-                     else
-                        colors.secondaryTint
-                    )
-                , Font.size 32
-                , Border.rounded 5
-                , width (px 60)
-                , height (px 60)
-                , pointer
-                , onClick letter
-                ]
-                (el [ centerX, centerY ]
-                    (text (String.fromChar letter))
-                )
-
-        letterRow ls =
-            row
-                [ spacing 5
-                , centerX
-                , Font.medium
-                ]
-                (Array.toList <|
-                    Array.map cell ls
-                )
-    in
-    column
-        [ spacing 5
-        , centerX
-        , noTouchDelay
-        ]
-        (List.map letterRow <|
-            partition2 2 3 letters
-        )
-
-
-{-| Split an array of values into smaller arrays, such that the overall order is preserved,
-and each array has alternating lengths. Any leftover values go in a final, possibly shorter,
-array.
-
-For example, `partition2 2 3 (Array.fromList [1, 2, 3, 4, 5, 6])` -> `[1, 2], [3, 4, 5], [6]`
-
--}
-partition2 : Int -> Int -> Array a -> List (Array a)
-partition2 x y zs =
-    if Array.length zs > x then
-        Array.slice 0 x zs :: partition2 y x (Array.slice x (Array.length zs) zs)
-
-    else
-        [ zs ]
 
 
 {-| Actual HTML button, styled with a simple border, with a fixed width for consistent layout.
