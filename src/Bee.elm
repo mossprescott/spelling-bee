@@ -217,8 +217,17 @@ update backend msg model =
                     , Cmd.none
                     )
 
+                -- FIXME: duplicated from below
                 ReceiveNewViewportSize size ->
                     ( { model | viewport = size }
+                    , Cmd.none
+                    )
+
+                -- FIXME: duplicated from below
+                SetColorMode mode ->
+                    ( { model
+                        | colorMode = mode
+                      }
                     , Cmd.none
                     )
 
