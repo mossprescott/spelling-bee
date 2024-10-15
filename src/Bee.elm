@@ -12,10 +12,11 @@ import Animator exposing (Timeline)
 import Browser
 import Browser.Dom
 import Browser.Events
-import Dict
-import Element exposing (centerX)
+import Dict exposing (Dict)
+import Element exposing (Color, Element, centerX)
 import Element.Background as Background
 import Element.Font as Font
+import Element.Lazy as Lazy
 import Html exposing (Html)
 import Http
 import Language exposing (Language(..), Strings, stringsFor)
@@ -469,6 +470,8 @@ beeView model =
                         ftr =
                             puzzleFooter colors strings data.puzzle.editor
 
+                        -- Note: this view is re-constructed every time, because parts of it change
+                        -- when a letter is entered or deleted, or for any other user action.
                         gameView =
                             Element.column
                                 [ centerX
@@ -479,7 +482,7 @@ beeView model =
                                 [ -- Note: this is the player's score based a local count of the words they found,
                                   -- not the score under .friends (which should be the same), probably because of
                                   -- guest mode?
-                                  scoreBanner colors strings data.hints.maxScore (apparentScore user data) localHasAllPangrams
+                                  scoreBanner colors strings data.hints.maxScore (apparentScore peopleInfo.user data) (localHasAllPangrams data)
                                 , whenLatest <| entered colors Edit Submit Shuffle model.input
                                 , whenLatest <|
                                     case model.message of
@@ -495,7 +498,7 @@ beeView model =
                                             hintWarning colors msg
 
                                         JustFound word ->
-                                            foundMunged
+                                            decoratedWords data peopleInfo
                                                 |> List.filter ((==) word << .word)
                                                 |> List.head
                                                 |> Maybe.map (hintFound colors)
@@ -528,74 +531,16 @@ beeView model =
                                         ]
                                 ]
 
-                        wordsView =
-                            wordList colors strings model.wordSort ResortWords 5 foundMunged (data.puzzle.expiration == Nothing)
-
-                        friendsView =
-                            friendList colors strings user friendsPlaying friendToMeta data.hints.maxScore groupInfo.score groupInfo.hasAllPangrams
-
-                        foundMunged =
-                            List.map
-                                (\( w, foundBy ) ->
-                                    WordEntry
-                                        w
-                                        (not <| List.isEmpty <| List.filter ((==) user) foundBy)
-                                        (List.filterMap
-                                            (\u -> Dict.get u friendColors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
-                                         <|
-                                            List.sort foundBy
-                                        )
-                                )
-                                data.found
-
-                        -- Assign colors to just the friends that have logged words today. That
-                        -- results in nicer choices of colors sometimes, and potentially
-                        -- inconsistent choices from day to day if different people are playing.
-                        friendColors =
-                            assignColors colors <|
-                                List.filter ((/=) user) <|
-                                    Dict.keys friendsPlaying
-
-                        friendToMeta =
-                            Dict.map (\u c -> ( c, unsharedScore u data )) friendColors
-
-                        friendsPlaying =
-                            Dict.filter (\name info -> name == user || info.score > 0) <|
-                                friends
-
-                        -- TODO: consider only words for user; false if empty
-                        localHasPangram =
-                            data.found
-                                |> List.any (isPangram << Tuple.first)
-
-                        localHasAllPangrams =
-                            data.found
-                                |> List.filter (isPangram << Tuple.first)
-                                |> List.length
-                                |> (==) data.hints.pangramCount
-
-                        ( user, friends, groupInfo ) =
-                            case data.user of
-                                Nothing ->
-                                    let
-                                        localScore =
-                                            case data.puzzle.expiration of
-                                                Just _ ->
-                                                    data.found
-                                                        |> List.foldl ((+) << wordScore << Tuple.first) 0
-
-                                                Nothing ->
-                                                    0
-                                    in
-                                    ( strings.guestLabel
-                                    , Dict.insert strings.guestLabel (UserInfo localScore localHasPangram localHasAllPangrams) data.friends
-                                    , GroupInfo localScore False
-                                    )
-
-                                Just name ->
-                                    ( name, data.friends, data.group )
+                        -- All the info, computed once for non-lazy views:
+                        peopleInfo =
+                            people model.language model.colorMode data
                     in
-                    mainLayout (decorateHeader hdr) gameView wordsView friendsView ftr
+                    mainLayout
+                        (decorateHeader hdr)
+                        gameView
+                        (Lazy.lazy4 wordsView model.colorMode model.language model.wordSort data)
+                        (Lazy.lazy3 friendsView model.language model.colorMode data)
+                        ftr
 
                 Nothing ->
                     let
@@ -619,6 +564,147 @@ beeView model =
         , Font.color colors.foreground
         ]
         (body desiredColumnWidth model.viewport)
+
+
+
+--
+-- View construction functions factored out to receive only the specific state that they actually
+-- reference, so Element.lazy can be applied to them (and their callers).
+--
+
+
+{-| This view doesn't change when letters are entered or when the letters are shuffled. And it's
+probably the most expensive view to construct, so making it lazy should help.
+-}
+wordsView : ColorMode -> Language -> WordListSortOrder -> PuzzleResponse -> Element Msg
+wordsView colorMode language sort data =
+    let
+        info =
+            people language colorMode data
+    in
+    wordList
+        (Constants.themeColors colorMode)
+        (Language.stringsFor language)
+        sort
+        ResortWords
+        5
+        (decoratedWords data info)
+        (data.puzzle.expiration == Nothing)
+
+
+{-| This view doesn't change when letters are entered or when the letters are shuffled.
+-}
+friendsView : Language -> ColorMode -> PuzzleResponse -> Element msg
+friendsView language colorMode data =
+    let
+        info =
+            people language colorMode data
+
+        friendToMeta =
+            Dict.map (\u c -> ( c, unsharedScore u data )) info.friendColors
+    in
+    friendList
+        (Constants.themeColors colorMode)
+        (Language.stringsFor language)
+        info.user
+        info.friendsPlaying
+        friendToMeta
+        data.hints.maxScore
+        info.group.score
+        info.group.hasAllPangrams
+
+
+{-| Aggregation of all the information about people and how to display them.
+-}
+type alias PeopleInfo =
+    { user : String
+    , friends : Dict String UserInfo
+    , group : GroupInfo
+    , friendsPlaying : Dict String UserInfo
+    , friendColors : Dict Puzzle.User Color
+    }
+
+
+people : Language -> ColorMode -> PuzzleResponse -> PeopleInfo
+people language colorMode data =
+    let
+        strings =
+            Language.stringsFor language
+
+        colors =
+            Constants.themeColors colorMode
+
+        -- Assign colors to just the friends that have logged words today. That
+        -- results in nicer choices of colors sometimes, and potentially
+        -- inconsistent choices from day to day if different people are playing.
+        friendColors =
+            assignColors colors <|
+                List.filter ((/=) user) <|
+                    Dict.keys friendsPlaying
+
+        friendsPlaying =
+            Dict.filter (\name info -> name == user || info.score > 0) <|
+                friends
+
+        ( user, friends, group ) =
+            case data.user of
+                Nothing ->
+                    let
+                        localScore =
+                            case data.puzzle.expiration of
+                                Just _ ->
+                                    data.found
+                                        |> List.foldl ((+) << wordScore << Tuple.first) 0
+
+                                Nothing ->
+                                    0
+                    in
+                    ( strings.guestLabel
+                    , Dict.insert strings.guestLabel (UserInfo localScore (localHasPangram data) (localHasAllPangrams data)) data.friends
+                    , GroupInfo localScore False
+                    )
+
+                Just name ->
+                    ( name, data.friends, data.group )
+    in
+    { user = user
+    , friends = friends
+    , group = group
+    , friendsPlaying = friendsPlaying
+    , friendColors = friendColors
+    }
+
+
+decoratedWords : PuzzleResponse -> PeopleInfo -> List WordEntry
+decoratedWords data peopleInfo =
+    data.found
+        |> List.map
+            (\( w, foundBy ) ->
+                WordEntry
+                    w
+                    (not <| List.isEmpty <| List.filter ((==) peopleInfo.user) foundBy)
+                    (List.filterMap
+                        (\u -> Dict.get u peopleInfo.friendColors |> Maybe.map (\c -> ( String.slice 0 1 u, c )))
+                     <|
+                        List.sort foundBy
+                    )
+            )
+
+
+{-| TODO: consider only words for user; false if empty
+-}
+localHasPangram : PuzzleResponse -> Bool
+localHasPangram data =
+    data.found
+        |> List.any (isPangram << Tuple.first)
+
+
+localHasAllPangrams : PuzzleResponse -> Bool
+localHasAllPangrams data =
+    data.found
+        |> List.filter (isPangram << Tuple.first)
+        |> List.length
+        |> (==) data.hints.pangramCount
 
 
 desiredColumnWidth : Int
